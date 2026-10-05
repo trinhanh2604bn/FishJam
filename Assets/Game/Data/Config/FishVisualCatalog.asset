@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8994706fedc97fa469d78964f3ab9776, type: 3}
+  m_Name: FishVisualCatalog
+  m_EditorClassIdentifier: FishPuzzle.Runtime::FishPuzzle.Presentation.FishVisualCatalog
+  _entries:
+  - _fishType: 0
+    _sprite: {fileID: 21300000, guid: 26f7aa1479f29994ba600bd6b5ab152f, type: 3}
+  - _fishType: 1
+    _sprite: {fileID: 21300000, guid: 062b20e2faffd0a4f9fc9fb0c205a187, type: 3}
+  - _fishType: 2
+    _sprite: {fileID: 21300000, guid: e80d55b0bedc4054d8fd02b08e6308e3, type: 3}
+  - _fishType: 3
+    _sprite: {fileID: 21300000, guid: 0487b7a72b717fa48813225b7db9731d, type: 3}
+  - _fishType: 4
+    _sprite: {fileID: 21300000, guid: d260776f6dab6ec4385117ad82728551, type: 3}
+  - _fishType: 5
+    _sprite: {fileID: 21300000, guid: d6792d3027b5f9648a2d90cbcf24e7a0, type: 3}
+  - _fishType: 6
+    _sprite: {fileID: 21300000, guid: 1525c191872b8c749979355301ea8610, type: 3}
+  - _fishType: 7
+    _sprite: {fileID: 21300000, guid: 88f17f75491bf9848931bea9818988f4, type: 3}
+  - _fishType: 8
+    _sprite: {fileID: 21300000, guid: 122ffd17614b17443aca2e924865bc33, type: 3}
+  - _fishType: 9
+    _sprite: {fileID: 21300000, guid: c588e1486844ca84f8f08ec8936de47a, type: 3}
+  - _fishType: 10
+    _sprite: {fileID: 21300000, guid: 01a63f4827bc1f749b09cf857690da6a, type: 3}
+  - _fishType: 11
+    _sprite: {fileID: 21300000, guid: e1f2ca483e99e674180568a5f8524dd2, type: 3}
+  - _fishType: 12
+    _sprite: {fileID: 21300000, guid: 592c6cbf15be4614ca336ede9f0667f7, type: 3}

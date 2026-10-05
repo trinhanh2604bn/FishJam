@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aad67c39e54722247b2e02e80e157c95, type: 3}
+  m_Name: GameplayArtCatalog
+  m_EditorClassIdentifier: FishPuzzle.Runtime::FishPuzzle.Presentation.GameplayArtCatalog
+  _gameplayBackground: {fileID: 21300000, guid: 8c030433d3cb21342acafe5cc31dd1e4, type: 3}
+  _bubbleBack: {fileID: 21300000, guid: 8c935b7cf60adea44aee5494b322b063, type: 3}
+  _bubbleFront: {fileID: 21300000, guid: 14e940ad45e203b499edb95a2f40f098, type: 3}
+  _bubbleFrostOverlay: {fileID: 21300000, guid: 7bf2487f5f5a33543957f8c528d0f833, type: 3}
+  _bubblePopParticle: {fileID: 21300000, guid: 26942bd204773464dbe08d90949d95a8, type: 3}
+  _smallBubbleParticle: {fileID: 21300000, guid: 62a2e0b936476ef44bcad9184906cdec, type: 3}
+  _tankBack: {fileID: 21300000, guid: 57e2ba7ed7c21854c820304a025149f1, type: 3}
+  _tankFrontGlass: {fileID: 21300000, guid: 9c05aedbca5489a47a547593394bb01a, type: 3}
+  _tankLockedPlus: {fileID: 21300000, guid: 11c116f53f913fd49856fe6754383d65, type: 3}
+  _tankShelf: {fileID: 21300000, guid: e7dd8989cf38fcb42ad5b10a43a59ce2, type: 3}
+  _targetBadgeFrame: {fileID: 21300000, guid: 7c7c70793090397408f77b63393df6e2, type: 3}
+  _levelHudPanel: {fileID: 21300000, guid: 03cb54b3f88ea3c4d94dd9d1549ca228, type: 3}
+  _currencyCounterFrame: {fileID: 21300000, guid: bb188773edf28cb4b9f3cbe25a4dcc8d, type: 3}
+  _coinIcon: {fileID: 21300000, guid: 1eb0da30e1cfa214f90938280d94e1b3, type: 3}
+  _greenPlusIcon: {fileID: 21300000, guid: 68f4300d5ae3fa1438d0c71239b8444a, type: 3}
+  _heartIcon: {fileID: 21300000, guid: 2c4cccdfc6967c242a3881c4548b1ecc, type: 3}
+  _brokenHeartIcon: {fileID: 21300000, guid: 9432b72dcbe22614fbe94ee79177ca5c, type: 3}
+  _globalProgressPanel: {fileID: 21300000, guid: f3385cbc06b583443b9775c8500b8260, type: 3}
+  _settingsButton: {fileID: 21300000, guid: dfe9edea5506b3f43973c5ac100a96ec, type: 3}
+  _gearIcon: {fileID: 21300000, guid: 420297f82f3c9ce49bfd505961546097, type: 3}
+  _lockedButton: {fileID: 21300000, guid: c138fa6d3729cb846bb93e7e5e45803a, type: 3}
+  _lockIcon: {fileID: 21300000, guid: ab1cc1d0f4458524883ee65ac62efdbe, type: 3}
+  _tankWaterHighlight: {fileID: 0}
+  _waitingTraySlot: {fileID: 0}
+  _waitingTrayShelf: {fileID: 0}
+  _winBackground: {fileID: 21300000, guid: 3a53fe32ee21ab44e87bb44e249cd1c8, type: 3}
+  _snowflakeIcon: {fileID: 21300000, guid: b58fc2ccd59ea6b4d81390be88c0e510, type: 3}

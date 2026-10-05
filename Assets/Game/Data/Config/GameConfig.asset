@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4a8e1b07d3f4a2e9b6c5d4e3f2a1908, type: 3}
+  m_Name: GameConfig
+  m_EditorClassIdentifier: FishPuzzle.Runtime::FishPuzzle.Core.GameConfig
+  _maxTankSlots: 4
+  _defaultUnlockedTankCount: 2
+  _tankCapacity: 3
+  _waitingTraySlotCount: 5
+  _waitingTrayFailCount: 5
+  _levelCompleteScoreReward: 20
+  _loseLifeCost: 1
+  _tankUnlockGoldCost: 600
+  _extraTankAdUnlockAllowed: 1
+  _distinctFishTypesPerBubble: 3
+  _outOfSpaceRescueEnabled: 0
+  _failTimerEnabled: 0

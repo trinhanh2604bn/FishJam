@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="15" result="Passed" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.4293574">
+  <test-suite type="TestSuite" id="1000" name="FishJam" fullname="FishJam" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.429357" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="EditMode" />
+    </properties>
+    <test-suite type="Assembly" id="1018" name="FishPuzzle.EditModeTests.dll" fullname="D:/FishJam/Library/ScriptAssemblies/FishPuzzle.EditModeTests.dll" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.416119" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="7364" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="EditMode" />
+        <property name="EditorOnly" value="True" />
+      </properties>
+      <test-suite type="TestSuite" id="1019" name="FishPuzzle" fullname="FishPuzzle" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.415670" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <test-suite type="TestSuite" id="1020" name="Tests" fullname="FishPuzzle.Tests" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.415539" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <test-suite type="TestSuite" id="1021" name="EditMode" fullname="FishPuzzle.Tests.EditMode" runstate="Runnable" testcasecount="15" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.415365" total="15" passed="15" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-suite type="TestFixture" id="1001" name="GameConfigBootstrapTests" fullname="FishPuzzle.Tests.EditMode.GameConfigBootstrapTests" classname="FishPuzzle.Tests.EditMode.GameConfigBootstrapTests" runstate="Runnable" testcasecount="2" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.043494" total="2" passed="2" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1002" name="DefaultAsset_MatchesLockedProductRules" fullname="FishPuzzle.Tests.EditMode.GameConfigBootstrapTests.DefaultAsset_MatchesLockedProductRules" methodname="DefaultAsset_MatchesLockedProductRules" classname="FishPuzzle.Tests.EditMode.GameConfigBootstrapTests" runstate="Runnable" seed="1503482588" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.022974" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1003" name="NewInstance_UsesLockedProductDefaults" fullname="FishPuzzle.Tests.EditMode.GameConfigBootstrapTests.NewInstance_UsesLockedProductDefaults" methodname="NewInstance_UsesLockedProductDefaults" classname="FishPuzzle.Tests.EditMode.GameConfigBootstrapTests" runstate="Runnable" seed="336041383" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.000917" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+            </test-suite>
+            <test-suite type="TestFixture" id="1004" name="M1ArtValidationTests" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" testcasecount="13" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.370354" total="13" passed="13" failed="0" inconclusive="0" skipped="0" asserts="0">
+              <properties />
+              <test-case id="1012" name="BubblePrefab_SandwichesFishBetweenBackAndFront" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.BubblePrefab_SandwichesFishBetweenBackAndFront" methodname="BubblePrefab_SandwichesFishBetweenBackAndFront" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="611657993" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.021575" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1011" name="BubbleTextures_HaveMipMapsDisabled" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.BubbleTextures_HaveMipMapsDisabled" methodname="BubbleTextures_HaveMipMapsDisabled" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="760203351" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.020273" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1010" name="FishAndCreatureTextures_AreSpritesWithoutMipMaps" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.FishAndCreatureTextures_AreSpritesWithoutMipMaps" methodname="FishAndCreatureTextures_AreSpritesWithoutMipMaps" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="1625728226" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.045943" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1016" name="FishPrefab_HasVisualAndFishView" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.FishPrefab_HasVisualAndFishView" methodname="FishPrefab_HasVisualAndFishView" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="2141661237" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.007697" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1005" name="FishVisualCatalog_HasNoDuplicateFishTypes" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.FishVisualCatalog_HasNoDuplicateFishTypes" methodname="FishVisualCatalog_HasNoDuplicateFishTypes" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="1796103557" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.001866" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1006" name="FishVisualCatalog_MapsEveryRequiredFishType" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.FishVisualCatalog_MapsEveryRequiredFishType" methodname="FishVisualCatalog_MapsEveryRequiredFishType" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="1400308303" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.002644" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1007" name="FishVisualCatalog_RejectsDuplicateEntries" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.FishVisualCatalog_RejectsDuplicateEntries" methodname="FishVisualCatalog_RejectsDuplicateEntries" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="269451302" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.019026" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[[FishVisualCatalog] Duplicate FishType mappings: Orange. Each FishType must appear once.
+]]></output>
+              </test-case>
+              <test-case id="1009" name="GameplayArtCatalog_OptionalTrayAndWaterHighlightStayUnassigned" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.GameplayArtCatalog_OptionalTrayAndWaterHighlightStayUnassigned" methodname="GameplayArtCatalog_OptionalTrayAndWaterHighlightStayUnassigned" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="1442977218" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.064801" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1008" name="GameplayArtCatalog_RequiredReferencesAreAssigned" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.GameplayArtCatalog_RequiredReferencesAreAssigned" methodname="GameplayArtCatalog_RequiredReferencesAreAssigned" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="725570286" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.000792" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1017" name="PreviewScene_OpensWithRealSpritesAndNoMissingScripts" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.PreviewScene_OpensWithRealSpritesAndNoMissingScripts" methodname="PreviewScene_OpensWithRealSpritesAndNoMissingScripts" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="439403825" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.177654" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1013" name="TankSlotPrefab_SandwichesFishBetweenBackAndGlass" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.TankSlotPrefab_SandwichesFishBetweenBackAndGlass" methodname="TankSlotPrefab_SandwichesFishBetweenBackAndGlass" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="1627891711" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.001024" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1014" name="TargetBadgePrefab_UsesDynamicProgressText" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.TargetBadgePrefab_UsesDynamicProgressText" methodname="TargetBadgePrefab_UsesDynamicProgressText" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="56238197" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.000825" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+              </test-case>
+              <test-case id="1015" name="WaitingTrayPrefab_HasExactlyFiveSlots" fullname="FishPuzzle.Tests.EditMode.M1ArtValidationTests.WaitingTrayPrefab_HasExactlyFiveSlots" methodname="WaitingTrayPrefab_HasExactlyFiveSlots" classname="FishPuzzle.Tests.EditMode.M1ArtValidationTests" runstate="Runnable" seed="1965445928" result="Passed" start-time="2026-10-02 11:12:51Z" end-time="2026-10-02 11:12:51Z" duration="0.000612" asserts="0">
+                <properties>
+                  <property name="retryIteration" value="0" />
+                  <property name="repeatIteration" value="0" />
+                </properties>
+                <output><![CDATA[Saving results to: D:\FishJam\SourceArt\m1-tests.xml
+]]></output>
+              </test-case>
+            </test-suite>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>

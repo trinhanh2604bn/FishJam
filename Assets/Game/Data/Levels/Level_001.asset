@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69ddf96b3d1052d4497e0a5e6d4a0ab3, type: 3}
+  m_Name: Level_001
+  m_EditorClassIdentifier: FishPuzzle.Runtime::FishPuzzle.Domain.LevelData
+  _levelId: level_001
+  _initialUnlockedTankCount: 2
+  _totalFishRequired: 36
+  _targetGroupQueue: 000000000100000002000000030000000000000002000000010000000300000002000000000000000300000001000000i
+  _bubbleQueue:
+  - _bubbleId: L001_B001
+    _fishes: 010000000200000003000000i
+    _modifier: 0
+  - _bubbleId: L001_B002
+    _fishes: 000000000200000003000000i
+    _modifier: 0
+  - _bubbleId: L001_B003
+    _fishes: 000000000100000003000000i
+    _modifier: 0
+  - _bubbleId: L001_B004
+    _fishes: 000000000100000002000000i
+    _modifier: 0
+  - _bubbleId: L001_B005
+    _fishes: 010000000200000003000000i
+    _modifier: 0
+  - _bubbleId: L001_B006
+    _fishes: 000000000200000003000000i
+    _modifier: 0
+  - _bubbleId: L001_B007
+    _fishes: 000000000100000003000000i
+    _modifier: 0
+  - _bubbleId: L001_B008
+    _fishes: 000000000100000002000000i
+    _modifier: 0
+  - _bubbleId: L001_B009
+    _fishes: 010000000200000003000000i
+    _modifier: 0
+  - _bubbleId: L001_B010
+    _fishes: 000000000200000003000000i
+    _modifier: 0
+  - _bubbleId: L001_B011
+    _fishes: 000000000100000003000000i
+    _modifier: 0
+  - _bubbleId: L001_B012
+    _fishes: 000000000100000002000000i
+    _modifier: 0
+  _pileLayout: {fileID: 11400000, guid: 1f038151b504d204d95d327069b6c875, type: 2}

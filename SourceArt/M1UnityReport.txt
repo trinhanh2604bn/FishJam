@@ -1,0 +1,4 @@
+M1_SCENE_OPENED
+Scene: Assets/Game/Scenes/Dev/M1_AssetPreview.unity
+Missing scripts: 0
+Critical image sprites assigned.
