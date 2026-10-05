@@ -81,7 +81,54 @@ namespace FishPuzzle.Presentation
             }
 
             _fishViews.Remove(fish);
+        }
+
+        public void DisableInput()
+        {
+            var images = GetComponentsInChildren<Image>(true);
+            for (var i = 0; i < images.Length; i++)
+            {
+                if (images[i] != null)
+                {
+                    images[i].raycastTarget = false;
+                }
+            }
+
+            for (var i = 0; i < _fishViews.Count; i++)
+            {
+                if (_fishViews[i] != null)
+                {
+                    _fishViews[i].ReleaseInteraction();
+                }
+            }
+        }
+
+        public void SnapFishLayout()
+        {
             ApplyLayout();
+        }
+
+        public void CollectFishRects(List<RectTransform> rects)
+        {
+            if (rects == null)
+            {
+                return;
+            }
+
+            rects.Clear();
+            for (var i = 0; i < _fishViews.Count; i++)
+            {
+                if (_fishViews[i] == null)
+                {
+                    continue;
+                }
+
+                var rect = _fishViews[i].transform as RectTransform;
+                if (rect != null)
+                {
+                    rects.Add(rect);
+                }
+            }
         }
 
         public void ClearFish()
@@ -148,14 +195,7 @@ namespace FishPuzzle.Presentation
 
         private static void DestroyObject(GameObject target)
         {
-            if (Application.isPlaying)
-            {
-                Destroy(target);
-            }
-            else
-            {
-                DestroyImmediate(target);
-            }
+            SceneObjectCleanup.DestroyObject(target);
         }
     }
 }

@@ -41,6 +41,9 @@ namespace FishPuzzle.Presentation
         [SerializeField] private Sprite _waitingTrayShelf;
         [SerializeField] private Sprite _winBackground;
         [SerializeField] private Sprite _snowflakeIcon;
+        [SerializeField] private Sprite _touchRipple;
+        [SerializeField] private Sprite _tankSplash;
+        [SerializeField] private Sprite _splashDroplet;
 
         public Sprite GameplayBackground => _gameplayBackground;
         public Sprite BubbleBack => _bubbleBack;
@@ -70,6 +73,9 @@ namespace FishPuzzle.Presentation
         public Sprite WaitingTrayShelf => _waitingTrayShelf;
         public Sprite WinBackground => _winBackground;
         public Sprite SnowflakeIcon => _snowflakeIcon;
+        public Sprite TouchRipple => _touchRipple;
+        public Sprite TankSplash => _tankSplash;
+        public Sprite SplashDroplet => _splashDroplet;
 
         public List<string> GetMissingRequiredReferences()
         {
@@ -145,7 +151,10 @@ namespace FishPuzzle.Presentation
                 || _waitingTraySlot != null
                 || _waitingTrayShelf != null
                 || _winBackground != null
-                || _snowflakeIcon != null;
+                || _snowflakeIcon != null
+                || _touchRipple != null
+                || _tankSplash != null
+                || _splashDroplet != null;
         }
 
         private static void AddIfMissing(List<string> missing, Sprite sprite, string name)

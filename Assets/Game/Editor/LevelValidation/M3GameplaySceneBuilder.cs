@@ -34,6 +34,76 @@ namespace FishPuzzle.EditorTools
         private const string TankPrefabPath = "Assets/Game/Prefabs/Tanks/PF_TankSlot.prefab";
         private const string TrayPrefabPath = "Assets/Game/Prefabs/UI/PF_WaitingTray.prefab";
 
+        public static void CaptureM82Layout()
+        {
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            var bootstrap = UnityEngine.Object.FindAnyObjectByType<LevelSceneBootstrapper>();
+            if (bootstrap == null)
+            {
+                throw new InvalidOperationException("Gameplay scene has no LevelSceneBootstrapper.");
+            }
+
+            bootstrap.Initialize();
+            Canvas.ForceUpdateCanvases();
+            var report = new StringBuilder();
+            report.AppendLine("M8.2 layout capture");
+            AuditLayout(report);
+            var canvas = UnityEngine.Object.FindAnyObjectByType<Canvas>();
+            var imagePath = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Logs", "M82GameplayLayout.png");
+            CaptureCanvas(canvas, imagePath, report);
+            report.AppendLine("Screenshot=" + imagePath);
+            var reportPath = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "Logs", "M82LayoutAudit.txt");
+            File.WriteAllText(reportPath, report.ToString());
+            Debug.Log(report.ToString());
+            EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+        }
+
+        private static void AuditLayout(StringBuilder report)
+        {
+            var names = new[]
+            {
+                "LevelPanel", "GoldPanel", "LivesPanel", "TankBoard", "Shelf",
+                "GlobalProgress", "WaitingTray", "BubbleField", "BottomReserve",
+                "SettingsButton", "LockedFeatureButton"
+            };
+            for (var i = 0; i < names.Length; i++)
+            {
+                var transforms = UnityEngine.Object.FindObjectsByType<RectTransform>(FindObjectsInactive.Include);
+                for (var t = 0; t < transforms.Length; t++)
+                {
+                    if (transforms[t].name != names[i])
+                    {
+                        continue;
+                    }
+
+                    var rect = transforms[t];
+                    var corners = new Vector3[4];
+                    rect.GetWorldCorners(corners);
+                    report.AppendLine(
+                        names[i]
+                        + " anchor=" + rect.anchorMin + "->" + rect.anchorMax
+                        + " pos=" + rect.anchoredPosition
+                        + " size=" + rect.sizeDelta
+                        + " worldBL=" + corners[0]
+                        + " worldTR=" + corners[2]);
+                }
+            }
+
+            var tanks = UnityEngine.Object.FindObjectsByType<TankSlotView>(FindObjectsInactive.Include);
+            for (var i = 0; i < tanks.Length; i++)
+            {
+                var rect = tanks[i].GetComponent<RectTransform>();
+                report.AppendLine("Tank " + tanks[i].name + " pos=" + rect.anchoredPosition + " size=" + rect.sizeDelta);
+            }
+
+            var bubbles = UnityEngine.Object.FindObjectsByType<BubbleView>(FindObjectsInactive.Include);
+            for (var i = 0; i < bubbles.Length; i++)
+            {
+                var rect = bubbles[i].GetComponent<RectTransform>();
+                report.AppendLine("Bubble slot " + bubbles[i].SlotId + " pos=" + rect.anchoredPosition + " size=" + rect.sizeDelta);
+            }
+        }
+
         public static void BuildAndExit()
         {
             var exitCode = 1;
@@ -172,57 +242,72 @@ namespace FishPuzzle.EditorTools
             var hud = CreateRect("HUD", safeAreaObject);
             Stretch(hud);
             var levelPanel = CreateImage("LevelPanel", hud, art.LevelHudPanel, true);
-            Place(levelPanel.rectTransform, new Vector2(-340f, 860f), new Vector2(320f, 140f));
-            var levelLabel = CreateLabel(levelPanel.transform, "LevelLabel", "1", font, new Vector2(24f, 0f), new Vector2(180f, 70f), 54f, Color.white);
+            Place(levelPanel.rectTransform, new Vector2(32f, -36f), new Vector2(320f, 118f));
+            SetAnchor(levelPanel.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f));
+            levelPanel.rectTransform.pivot = new Vector2(0f, 1f);
+            var levelLabel = CreateLabel(levelPanel.transform, "LevelLabel", "1", font, new Vector2(28f, 0f), new Vector2(210f, 78f), 58f, Color.white);
 
             var goldPanel = CreateImage("GoldPanel", hud, art.CurrencyCounterFrame, true);
-            Place(goldPanel.rectTransform, new Vector2(150f, 870f), new Vector2(300f, 100f));
+            Place(goldPanel.rectTransform, new Vector2(-296f, -94f), new Vector2(248f, 100f));
+            SetAnchor(goldPanel.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f));
             var coin = CreateImage("CoinIcon", goldPanel.transform, art.CoinIcon, true);
-            Place(coin.rectTransform, new Vector2(-100f, 0f), new Vector2(64f, 64f));
-            var goldLabel = CreateLabel(goldPanel.transform, "GoldLabel", "0", font, new Vector2(28f, 0f), new Vector2(140f, 60f), 36f, new Color(0.25f, 0.16f, 0.05f, 1f));
+            Place(coin.rectTransform, new Vector2(-92f, 0f), new Vector2(60f, 60f));
+            var goldLabel = CreateLabel(goldPanel.transform, "GoldLabel", "0", font, new Vector2(22f, 0f), new Vector2(132f, 56f), 36f, new Color(0.25f, 0.16f, 0.05f, 1f));
 
             var livesPanel = CreateImage("LivesPanel", hud, art.HeartIcon, true);
-            Place(livesPanel.rectTransform, new Vector2(390f, 870f), new Vector2(92f, 92f));
+            Place(livesPanel.rectTransform, new Vector2(-84f, -92f), new Vector2(96f, 96f));
+            SetAnchor(livesPanel.rectTransform, new Vector2(1f, 1f), new Vector2(1f, 1f));
             var livesLabel = CreateLabel(livesPanel.transform, "LivesLabel", "5", font, new Vector2(0f, -6f), new Vector2(70f, 46f), 30f, Color.white);
 
             var tankBoardObject = CreateRect("TankBoard", safeAreaObject);
-            Place(tankBoardObject, new Vector2(0f, 690f), new Vector2(1040f, 360f));
+            Place(tankBoardObject, new Vector2(0f, -260f), new Vector2(940f, 460f));
+            SetAnchor(tankBoardObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
             var tankBoard = tankBoardObject.gameObject.AddComponent<TankBoardView>();
-            var shelf = CreateImage("Shelf", tankBoardObject, art.TankShelf, true);
-            Place(shelf.rectTransform, new Vector2(0f, -130f), new Vector2(1020f, 90f));
+            var shelf = CreateImage("Shelf", tankBoardObject, art.TankShelf, false);
+            Place(shelf.rectTransform, new Vector2(0f, -118f), new Vector2(930f, 48f));
             var tankSlots = CreateRect("Slots", tankBoardObject);
             Stretch(tankSlots);
             var tankSerialized = new SerializedObject(tankBoard);
             tankSerialized.FindProperty("_slotRoot").objectReferenceValue = tankSlots;
-            tankSerialized.FindProperty("_horizontalSpacing").floatValue = 250f;
+            tankSerialized.FindProperty("_horizontalSpacing").floatValue = 230f;
             tankSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             var progressObject = CreateImage("GlobalProgress", safeAreaObject, art.GlobalProgressPanel, true);
-            Place(progressObject.rectTransform, new Vector2(-400f, 310f), new Vector2(210f, 190f));
-            var progressLabel = CreateLabel(progressObject.transform, "ProgressLabel", "0 / 36", font, new Vector2(0f, -18f), new Vector2(180f, 70f), 32f, new Color(0.08f, 0.25f, 0.45f, 1f));
+            Place(progressObject.rectTransform, new Vector2(32f, -629f), new Vector2(156f, 138f));
+            SetAnchor(progressObject.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f));
+            progressObject.rectTransform.pivot = new Vector2(0f, 0.5f);
+            var progressLabel = CreateLabel(progressObject.transform, "ProgressLabel", "0 / 36", font, new Vector2(0f, -16f), new Vector2(140f, 58f), 32f, new Color(0.08f, 0.25f, 0.45f, 1f));
 
             var trayObject = (GameObject)PrefabUtility.InstantiatePrefab(trayPrefab, safeAreaObject);
             trayObject.name = "WaitingTray";
-            Place(trayObject.GetComponent<RectTransform>(), new Vector2(70f, 200f), new Vector2(860f, 150f));
+            var trayRect = trayObject.GetComponent<RectTransform>();
+            Place(trayRect, new Vector2(540f, -629f), new Vector2(660f, 124f));
+            SetAnchor(trayRect, new Vector2(0f, 1f), new Vector2(0f, 1f));
             var waitingTray = trayObject.GetComponent<WaitingTrayView>();
 
             var bubbleField = CreateRect("BubbleField", safeAreaObject);
-            Stretch(bubbleField);
+            Place(bubbleField, new Vector2(0f, -268f), new Vector2(940f, -936f));
+            SetAnchor(bubbleField, new Vector2(0.5f, 0f), new Vector2(0.5f, 1f));
             var bubblePile = bubbleField.gameObject.AddComponent<BubblePileView>();
             var pileSerialized = new SerializedObject(bubblePile);
             pileSerialized.FindProperty("_slotRoot").objectReferenceValue = bubbleField;
             pileSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             var bottom = CreateRect("BottomReserve", safeAreaObject);
-            Place(bottom, new Vector2(0f, -890f), new Vector2(1000f, 110f));
+            Place(bottom, new Vector2(0f, 110f), new Vector2(0f, 136f));
+            SetAnchor(bottom, Vector2.zero, new Vector2(1f, 0f));
             var settings = CreateImage("SettingsButton", bottom, art.SettingsButton, true);
-            Place(settings.rectTransform, new Vector2(430f, 0f), new Vector2(96f, 96f));
+            Place(settings.rectTransform, new Vector2(-32f, 0f), new Vector2(108f, 108f));
+            SetAnchor(settings.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f));
+            settings.rectTransform.pivot = new Vector2(1f, 0.5f);
             var gear = CreateImage("GearIcon", settings.transform, art.GearIcon, true);
-            Place(gear.rectTransform, Vector2.zero, new Vector2(58f, 58f));
+            Place(gear.rectTransform, Vector2.zero, new Vector2(64f, 64f));
             var locked = CreateImage("LockedFeatureButton", bottom, art.LockedButton, true);
-            Place(locked.rectTransform, new Vector2(-430f, 0f), new Vector2(96f, 96f));
+            Place(locked.rectTransform, new Vector2(32f, 0f), new Vector2(108f, 108f));
+            SetAnchor(locked.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f));
+            locked.rectTransform.pivot = new Vector2(0f, 0.5f);
             var lockIcon = CreateImage("LockIcon", locked.transform, art.LockIcon, true);
-            Place(lockIcon.rectTransform, Vector2.zero, new Vector2(52f, 52f));
+            Place(lockIcon.rectTransform, Vector2.zero, new Vector2(58f, 58f));
 
             var overlay = CreateRect("OverlayRoot", canvasObject.transform);
             Stretch(overlay);
@@ -557,6 +642,18 @@ namespace FishPuzzle.EditorTools
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+        }
+
+        private static void SetAnchor(RectTransform rect, Vector2 min, Vector2 max)
+        {
+            var position = rect.anchoredPosition;
+            var size = rect.sizeDelta;
+            var pivot = rect.pivot;
+            rect.anchorMin = min;
+            rect.anchorMax = max;
+            rect.pivot = pivot;
             rect.anchoredPosition = position;
             rect.sizeDelta = size;
         }

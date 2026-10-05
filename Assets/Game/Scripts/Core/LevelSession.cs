@@ -238,7 +238,11 @@ namespace FishPuzzle.Core
                 return;
             }
 
-            if (visualState != GameState.PoppingBubble
+            if (visualState != GameState.RoutingFish
+                && visualState != GameState.ResolvingTank
+                && visualState != GameState.AssigningTarget
+                && visualState != GameState.AutoPromotingTray
+                && visualState != GameState.PoppingBubble
                 && visualState != GameState.SettlingBubblePile
                 && visualState != GameState.SpawningTopBubble)
             {
@@ -535,14 +539,24 @@ namespace FishPuzzle.Core
 
                 var landedOrdinal = tank.FillCount - 1;
                 var completed = false;
+                var hasNext = false;
+                var nextTarget = default(FishType);
                 var consumed = Array.Empty<int>();
                 if (tank.FillCount >= tank.Capacity)
                 {
-                    completed = TryResolveFullTank(tank, out _, out _, out consumed);
+                    completed = TryResolveFullTank(tank, out hasNext, out nextTarget, out consumed);
                     SetState(GameState.AutoPromotingTray);
                 }
 
-                _promotions.Add(new TrayPromotionRecord(fish.Id, tankSlot, landedOrdinal, completed, consumed));
+                _promotions.Add(new TrayPromotionRecord(
+                    fish.Id,
+                    tankSlot,
+                    landedOrdinal,
+                    completed,
+                    consumed,
+                    trayIndex,
+                    hasNext,
+                    nextTarget));
             }
 
             if (guard >= limit)

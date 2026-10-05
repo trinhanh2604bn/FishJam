@@ -5,7 +5,9 @@
         "FishPuzzle.Runtime",
         "UnityEngine.UI",
         "Unity.TextMeshPro",
-        "Unity.TextMeshPro.Editor"
+        "Unity.TextMeshPro.Editor",
+        "UnityEditor.TestRunner",
+        "UnityEditor.Android.Extensions"
     ],
     "includePlatforms": [
         "Editor"

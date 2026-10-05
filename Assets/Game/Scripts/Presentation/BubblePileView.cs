@@ -19,9 +19,49 @@ namespace FishPuzzle.Presentation
         private readonly List<BubbleDefinition> _queue = new List<BubbleDefinition>();
 
         private BubblePileLayout _layout;
+        private Vector2 _appliedFieldSize;
         private GameObject _bubblePrefab;
         private GameObject _fishPrefab;
         private FishVisualCatalog _fishCatalog;
+
+        private void LateUpdate()
+        {
+            SyncFieldPositions();
+        }
+
+        private void SyncFieldPositions()
+        {
+            if (_slotRoot == null || _layout == null || _viewsBySlot.Count == 0)
+            {
+                return;
+            }
+
+            var size = _slotRoot.rect.size;
+            if (size.x < 400f || size.y < 400f)
+            {
+                return;
+            }
+
+            if ((size - _appliedFieldSize).sqrMagnitude < 4f)
+            {
+                return;
+            }
+
+            _appliedFieldSize = size;
+            foreach (var pair in _viewsBySlot)
+            {
+                if (pair.Value == null || !TryFindSlot(_layout, pair.Key, out var slot) || slot == null)
+                {
+                    continue;
+                }
+
+                var rect = pair.Value.GetComponent<RectTransform>();
+                if (rect != null)
+                {
+                    rect.anchoredPosition = MapToField(slot.AnchoredPosition);
+                }
+            }
+        }
 
         public int VisibleBubbleCount => _visible.Count;
 
@@ -46,6 +86,7 @@ namespace FishPuzzle.Presentation
             ClearOwnedBubbles();
             _queue.Clear();
             _layout = layout;
+            _appliedFieldSize = Vector2.zero;
             _bubblePrefab = bubblePrefab;
             _fishPrefab = fishPrefab;
             _fishCatalog = fishCatalog;
@@ -65,6 +106,8 @@ namespace FishPuzzle.Presentation
                 return;
             }
 
+            Canvas.ForceUpdateCanvases();
+
             var placed = 0;
             for (var index = 0; index < queue.Count; index++)
             {
@@ -76,7 +119,7 @@ namespace FishPuzzle.Presentation
                 var definition = queue[index];
                 var instance = Instantiate(bubblePrefab, _slotRoot);
                 instance.name = "Bubble_" + (definition != null ? definition.BubbleId : index.ToString());
-                PrepareRect(instance.GetComponent<RectTransform>(), slot.AnchoredPosition);
+                PrepareRect(instance.GetComponent<RectTransform>(), MapToField(slot.AnchoredPosition));
 
                 var view = instance.GetComponent<BubbleView>();
                 if (view == null)
@@ -167,12 +210,13 @@ namespace FishPuzzle.Presentation
         public bool TryGetSlotPosition(int slotId, out Vector2 anchoredPosition)
         {
             anchoredPosition = Vector2.zero;
+            SyncFieldPositions();
             if (!TryFindSlot(_layout, slotId, out var slot) || slot == null)
             {
                 return false;
             }
 
-            anchoredPosition = slot.AnchoredPosition;
+            anchoredPosition = MapToField(slot.AnchoredPosition);
             return true;
         }
 
@@ -273,6 +317,22 @@ namespace FishPuzzle.Presentation
             return null;
         }
 
+        private Vector2 MapToField(Vector2 authored)
+        {
+            var area = _slotRoot != null ? _slotRoot.rect : new Rect(0f, 0f, 0f, 0f);
+            if (area.width < 64f || area.height < 64f)
+            {
+                return authored;
+            }
+
+            const float contentHalfX = 310f;
+            const float contentHalfY = 330f;
+            const float edgePadding = 128f;
+            var scaleX = Mathf.Max(80f, (area.width * 0.5f) - edgePadding) / contentHalfX;
+            var scaleY = Mathf.Max(80f, (area.height * 0.5f) - edgePadding) / contentHalfY;
+            return new Vector2(authored.x * scaleX, authored.y * scaleY);
+        }
+
         private static void PrepareRect(RectTransform rect, Vector2 anchoredPosition)
         {
             if (rect == null)
@@ -284,7 +344,7 @@ namespace FishPuzzle.Presentation
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = new Vector2(300f, 300f);
+            rect.sizeDelta = new Vector2(336f, 336f);
             rect.localScale = Vector3.one;
         }
 
@@ -325,12 +385,7 @@ namespace FishPuzzle.Presentation
 
         private static void DestroyObject(GameObject target)
         {
-            if (target == null)
-            {
-                return;
-            }
-
-            DestroyImmediate(target);
+            SceneObjectCleanup.DestroyObject(target);
         }
     }
 }

@@ -39,9 +39,8 @@ namespace FishPuzzle.Tests.PlayMode
             for (var i = 0; i < 5; i++)
             {
                 Click(ViewFor(flow.Session.FindFirstIdleFish(FishType.PinkStriped).Id));
+                yield return WaitUntilReady(flow);
             }
-
-            yield return null;
 
             Assert.That(flow.State, Is.EqualTo(GameState.Lose));
             Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(4));
@@ -80,7 +79,7 @@ namespace FishPuzzle.Tests.PlayMode
 
             var red = flow.Session.FindFirstIdleFish(FishType.RedClown);
             Click(ViewFor(red.Id));
-            yield return null;
+            yield return WaitUntilReady(flow);
             Assert.That(flow.Session.Tray.Count, Is.EqualTo(1));
 
             ClickLockedTank(2);
@@ -88,7 +87,7 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(flow.State, Is.EqualTo(GameState.TankUnlockModal));
             Assert.That(flow.UnlockModal.GoldButton, Is.Not.Null);
             flow.UnlockModal.GoldButton.onClick.Invoke();
-            yield return null;
+            yield return WaitUntilReady(flow);
 
             Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
             Assert.That(flow.IsUnlockModalVisible, Is.False);
@@ -108,7 +107,7 @@ namespace FishPuzzle.Tests.PlayMode
             ClickLockedTank(3);
             Assert.That(flow.IsUnlockModalVisible, Is.True);
             flow.UnlockModal.RewardButton.onClick.Invoke();
-            yield return null;
+            yield return WaitUntilReady(flow);
 
             Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
             Assert.That(flow.IsUnlockModalVisible, Is.False);
@@ -200,7 +199,7 @@ namespace FishPuzzle.Tests.PlayMode
                 || (flow.State != GameState.PlayerInput && flow.State != GameState.Win && flow.State != GameState.Lose))
             {
                 elapsed += Time.unscaledDeltaTime;
-                if (elapsed > 3f)
+                if (elapsed > 8f)
                 {
                     Assert.Fail("Resolution did not finish. State " + flow.State);
                 }
@@ -226,8 +225,7 @@ namespace FishPuzzle.Tests.PlayMode
 
         private static void Click(FishView fish)
         {
-            var eventData = new PointerEventData(EventSystem.current);
-            ExecuteEvents.Execute(fish.gameObject, eventData, ExecuteEvents.pointerClickHandler);
+            PointerGesture.Click(fish);
         }
 
         private static int Count<T>() where T : Object

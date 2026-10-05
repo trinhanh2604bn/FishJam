@@ -8,15 +8,21 @@ using UnityEngine.UI;
 namespace FishPuzzle.Presentation
 {
     /// <summary>
-    /// Displays one fish sprite and reports a tap. It does not choose a tank or a tray slot.
+    /// Displays one fish sprite. A press is visual only. Release asks the flow to route once.
     /// </summary>
-    public sealed class FishView : MonoBehaviour, IPointerClickHandler
+    public sealed class FishView : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler
     {
         [SerializeField] private Image _visual;
         [SerializeField] private FishVisualCatalog _catalog;
         [SerializeField] private FishType _displayedType;
 
-        private Action<FishView> _onSelected;
+        private Func<FishView, bool> _tryBeginPress;
+        private Action<FishView> _onCommit;
+        private Action<FishView> _onCancel;
+        private FishPressFeedback _pressFeedback;
+        private Rect _pressScreenRect;
+        private Vector2 _pressScreenPosition;
+        private bool _gestureActive;
 
         public int FishId { get; private set; }
 
@@ -24,34 +30,102 @@ namespace FishPuzzle.Presentation
 
         public Sprite CurrentSprite => _visual != null ? _visual.sprite : null;
 
-        public void BindInteraction(int fishId, Action<FishView> onSelected)
+        public bool IsPressed => _pressFeedback != null && _pressFeedback.IsPressed;
+
+        public float PressLift => _pressFeedback != null ? _pressFeedback.Lift : 0f;
+
+        public float PressScale => _pressFeedback != null ? _pressFeedback.Scale : 1f;
+
+        public float PressAngle => _pressFeedback != null ? _pressFeedback.Angle : 0f;
+
+        public void BindInteraction(int fishId, Func<FishView, bool> tryBeginPress, Action<FishView> onCommit, Action<FishView> onCancel)
         {
             FishId = fishId;
-            _onSelected = onSelected;
+            _tryBeginPress = tryBeginPress;
+            _onCommit = onCommit;
+            _onCancel = onCancel;
+            _gestureActive = false;
+            EndPress();
             SetRaycastTarget(true);
         }
 
         public void ReleaseInteraction()
         {
-            _onSelected = null;
+            var cancel = _onCancel;
+            var notify = _gestureActive;
+            _gestureActive = false;
+            _tryBeginPress = null;
+            _onCommit = null;
+            _onCancel = null;
+            EndPress();
             SetRaycastTarget(false);
+            if (notify && cancel != null)
+            {
+                cancel(this);
+            }
         }
 
-        public void OnPointerClick(PointerEventData eventData)
+        public void BeginPress(AnimationTuning tuning)
         {
-            if (eventData == null || _onSelected == null)
+            Press().Begin(PressRect(), tuning);
+        }
+
+        public void AdvancePress(float delta)
+        {
+            if (_pressFeedback != null)
+            {
+                _pressFeedback.Tick(delta);
+            }
+        }
+
+        public void EndPress()
+        {
+            if (_pressFeedback != null)
+            {
+                _pressFeedback.End();
+            }
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (_gestureActive || eventData == null || _tryBeginPress == null || !_tryBeginPress(this))
             {
                 return;
             }
 
-            _onSelected(this);
+            _gestureActive = true;
+            CapturePressRect(eventData.position);
         }
 
-        private void SetRaycastTarget(bool raycastOn)
+        public void OnPointerUp(PointerEventData eventData)
         {
-            if (_visual != null)
+            if (!_gestureActive)
             {
-                _visual.raycastTarget = raycastOn;
+                return;
+            }
+
+            _gestureActive = false;
+            if (IsReleaseOverFish(eventData))
+            {
+                if (_onCommit != null)
+                {
+                    _onCommit(this);
+                }
+
+                return;
+            }
+
+            if (_onCancel != null)
+            {
+                _onCancel(this);
+            }
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (eventData == null)
+            {
+                return;
             }
         }
 
@@ -85,6 +159,85 @@ namespace FishPuzzle.Presentation
 
             _visual.sprite = sprite;
             _visual.enabled = true;
+        }
+
+        private FishPressFeedback Press()
+        {
+            if (_pressFeedback == null)
+            {
+                _pressFeedback = GetComponent<FishPressFeedback>();
+                if (_pressFeedback == null)
+                {
+                    _pressFeedback = gameObject.AddComponent<FishPressFeedback>();
+                }
+            }
+
+            return _pressFeedback;
+        }
+
+        private RectTransform PressRect()
+        {
+            if (_visual != null)
+            {
+                return _visual.rectTransform;
+            }
+
+            var image = GetComponentInChildren<Image>(true);
+            return image != null ? image.rectTransform : transform as RectTransform;
+        }
+
+        private void CapturePressRect(Vector2 screenPosition)
+        {
+            _pressScreenPosition = screenPosition;
+            var rect = transform as RectTransform;
+            if (rect == null)
+            {
+                _pressScreenRect = new Rect(screenPosition.x - 48f, screenPosition.y - 48f, 96f, 96f);
+                return;
+            }
+
+            var canvas = GetComponentInParent<Canvas>();
+            Camera camera = null;
+            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            {
+                camera = canvas.worldCamera;
+            }
+
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            var min = new Vector2(float.MaxValue, float.MaxValue);
+            var max = new Vector2(float.MinValue, float.MinValue);
+            for (var i = 0; i < corners.Length; i++)
+            {
+                var screen = RectTransformUtility.WorldToScreenPoint(camera, corners[i]);
+                min = Vector2.Min(min, screen);
+                max = Vector2.Max(max, screen);
+            }
+
+            const float pad = 36f;
+            _pressScreenRect = Rect.MinMaxRect(min.x - pad, min.y - pad, max.x + pad, max.y + pad);
+        }
+
+        private bool IsReleaseOverFish(PointerEventData eventData)
+        {
+            if (eventData == null)
+            {
+                return false;
+            }
+
+            var insideRect = _pressScreenRect.width >= 1f
+                && _pressScreenRect.height >= 1f
+                && _pressScreenRect.Contains(eventData.position);
+            var nearPress = Vector2.Distance(eventData.position, _pressScreenPosition) <= 48f;
+            return insideRect || nearPress;
+        }
+
+        private void SetRaycastTarget(bool raycastOn)
+        {
+            if (_visual != null)
+            {
+                _visual.raycastTarget = raycastOn;
+            }
         }
     }
 }

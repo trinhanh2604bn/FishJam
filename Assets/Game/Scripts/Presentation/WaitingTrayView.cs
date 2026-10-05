@@ -53,12 +53,7 @@ namespace FishPuzzle.Presentation
 
         private static void DestroyFish(GameObject target)
         {
-            if (target == null)
-            {
-                return;
-            }
-
-            DestroyImmediate(target);
+            SceneObjectCleanup.DestroyObject(target);
         }
     }
 }

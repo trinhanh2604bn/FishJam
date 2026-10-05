@@ -39,3 +39,6 @@ MonoBehaviour:
   _waitingTrayShelf: {fileID: 0}
   _winBackground: {fileID: 21300000, guid: 3a53fe32ee21ab44e87bb44e249cd1c8, type: 3}
   _snowflakeIcon: {fileID: 21300000, guid: b58fc2ccd59ea6b4d81390be88c0e510, type: 3}
+  _touchRipple: {fileID: 21300000, guid: f6f6a50f6ec42bc46802516fb77de2b1, type: 3}
+  _tankSplash: {fileID: 21300000, guid: 5527b1803d9577341a7463de663406a7, type: 3}
+  _splashDroplet: {fileID: 21300000, guid: 67e3f571b0a341a429179006c0e0723d, type: 3}

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using FishPuzzle.Bubbles;
+using FishPuzzle.Domain;
 
 namespace FishPuzzle.Core
 {
@@ -8,13 +9,24 @@ namespace FishPuzzle.Core
     /// </summary>
     public sealed class TrayPromotionRecord
     {
-        public TrayPromotionRecord(int fishId, int tankSlotIndex, int landedOrdinal, bool completedTank, int[] consumedFishIds)
+        public TrayPromotionRecord(
+            int fishId,
+            int tankSlotIndex,
+            int landedOrdinal,
+            bool completedTank,
+            int[] consumedFishIds,
+            int sourceTrayIndex,
+            bool hasNextTarget,
+            FishType nextTarget)
         {
             FishId = fishId;
             TankSlotIndex = tankSlotIndex;
             LandedOrdinal = landedOrdinal;
             CompletedTank = completedTank;
             ConsumedFishIds = consumedFishIds ?? System.Array.Empty<int>();
+            SourceTrayIndex = sourceTrayIndex;
+            HasNextTarget = hasNextTarget;
+            NextTarget = nextTarget;
         }
 
         public int FishId { get; }
@@ -26,6 +38,12 @@ namespace FishPuzzle.Core
         public bool CompletedTank { get; }
 
         public int[] ConsumedFishIds { get; }
+
+        public int SourceTrayIndex { get; }
+
+        public bool HasNextTarget { get; }
+
+        public FishType NextTarget { get; }
     }
 
     public sealed class TurnResolution

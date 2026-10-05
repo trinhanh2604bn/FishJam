@@ -16,6 +16,7 @@ namespace FishPuzzle.Presentation
         [SerializeField] private GameConfig _config;
         [SerializeField] private FishVisualCatalog _fishCatalog;
         [SerializeField] private GameplayArtCatalog _artCatalog;
+        [SerializeField] private AnimationTuning _animationTuning;
         [SerializeField] private GameplaySceneReferences _scene;
         [SerializeField] private GameObject _tankSlotPrefab;
         [SerializeField] private GameObject _badgePrefab;
@@ -147,7 +148,7 @@ namespace FishPuzzle.Presentation
             DestroyRemainingFish();
             PresentAttemptVisuals();
             BindLockedTankClicks();
-            _flow.Begin(_level, _config, _scene, _fishCatalog);
+            _flow.Begin(_level, _config, _scene, _fishCatalog, _animationTuning);
             RefreshProgressionHud();
             CaptureInspection();
         }
@@ -173,7 +174,7 @@ namespace FishPuzzle.Presentation
             }
 
             _flow.Configure(_progression, _rewardedAds, _artCatalog, RetryAttempt, RefreshProgressionHud);
-            _flow.Begin(_level, _config, _scene, _fishCatalog);
+            _flow.Begin(_level, _config, _scene, _fishCatalog, _animationTuning);
         }
 
         private void PresentAttemptVisuals()
@@ -254,11 +255,11 @@ namespace FishPuzzle.Presentation
             labelObject.SetActive(false);
             labelObject.transform.SetParent(hud, false);
             var rect = labelObject.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 0.5f);
-            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.anchorMin = new Vector2(0.5f, 1f);
+            rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = new Vector2(-210f, 780f);
-            rect.sizeDelta = new Vector2(220f, 70f);
+            rect.anchoredPosition = new Vector2(-8f, -96f);
+            rect.sizeDelta = new Vector2(150f, 56f);
             _scoreLabel = labelObject.AddComponent<TextMeshProUGUI>();
             _scoreLabel.font = _scene.GoldDisplay.font;
             _scoreLabel.fontSize = 40f;
@@ -276,7 +277,7 @@ namespace FishPuzzle.Presentation
             {
                 if (fish[i] != null)
                 {
-                    DestroyImmediate(fish[i].gameObject);
+                    SceneObjectCleanup.DestroyObject(fish[i].gameObject);
                 }
             }
         }

@@ -11,7 +11,7 @@ namespace FishPuzzle.Presentation
     public sealed class TankBoardView : MonoBehaviour
     {
         [SerializeField] private RectTransform _slotRoot;
-        [SerializeField] private float _horizontalSpacing = 260f;
+        [SerializeField] private float _horizontalSpacing = 230f;
 
         private readonly List<TankSlotView> _slots = new List<TankSlotView>();
         private GameObject _badgePrefab;
@@ -60,8 +60,8 @@ namespace FishPuzzle.Presentation
                 rect.anchorMin = new Vector2(0.5f, 0.5f);
                 rect.anchorMax = new Vector2(0.5f, 0.5f);
                 rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.anchoredPosition = new Vector2(origin + (i * _horizontalSpacing), 24f);
-                rect.sizeDelta = new Vector2(230f, 270f);
+                rect.anchoredPosition = new Vector2(origin + (i * _horizontalSpacing), 0f);
+                rect.sizeDelta = new Vector2(208f, 176f);
 
                 var slot = instance.GetComponent<TankSlotView>();
                 if (slot == null)
@@ -155,12 +155,7 @@ namespace FishPuzzle.Presentation
 
         private static void DestroyObject(GameObject target)
         {
-            if (target == null)
-            {
-                return;
-            }
-
-            DestroyImmediate(target);
+            SceneObjectCleanup.DestroyObject(target);
         }
     }
 }

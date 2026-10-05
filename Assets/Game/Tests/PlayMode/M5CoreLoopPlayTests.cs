@@ -6,7 +6,6 @@ using FishPuzzle.Presentation;
 using FishPuzzle.Tanks;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 
@@ -178,7 +177,7 @@ namespace FishPuzzle.Tests.PlayMode
                 || (flow.State != GameState.PlayerInput && flow.State != GameState.Win && flow.State != GameState.Lose))
             {
                 elapsed += Time.unscaledDeltaTime;
-                if (elapsed > 3f)
+                if (elapsed > 8f)
                 {
                     Assert.Fail("Resolution did not finish. " + Describe(flow));
                 }
@@ -218,8 +217,7 @@ namespace FishPuzzle.Tests.PlayMode
 
         private static void Click(FishView fish)
         {
-            var eventData = new PointerEventData(EventSystem.current);
-            ExecuteEvents.Execute(fish.gameObject, eventData, ExecuteEvents.pointerClickHandler);
+            PointerGesture.Click(fish);
         }
 
         private static int CountFishViews()

@@ -59,7 +59,7 @@ namespace FishPuzzle.Tests.PlayMode
             var fishBefore = CountFishViews();
 
             Click(fish);
-            yield return null;
+            yield return WaitUntilReady(flow);
 
             Assert.That(flow.Session.Tanks[0].FillCount, Is.EqualTo(1));
             Assert.That(flow.Session.Tanks[0].ContainedFish[0].Id, Is.EqualTo(fishId));
@@ -89,7 +89,7 @@ namespace FishPuzzle.Tests.PlayMode
             var fish = ViewFor(flow.Session.FindFirstIdleFish(FishType.PinkStriped).Id);
 
             Click(fish);
-            yield return null;
+            yield return WaitUntilReady(flow);
 
             Assert.That(flow.Session.Tray.Count, Is.EqualTo(1));
             Assert.That(flow.Session.Tray.GetFishAt(0).Type, Is.EqualTo(FishType.PinkStriped));
@@ -108,9 +108,8 @@ namespace FishPuzzle.Tests.PlayMode
             {
                 var fish = ViewFor(flow.Session.FindFirstIdleFish(FishType.Orange).Id);
                 Click(fish);
+                yield return WaitUntilReady(flow);
             }
-
-            yield return null;
 
             Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
             Assert.That(flow.Session.Progress.CollectedFishCount, Is.EqualTo(3));
@@ -140,9 +139,8 @@ namespace FishPuzzle.Tests.PlayMode
             {
                 var fish = ViewFor(flow.Session.FindFirstIdleFish(FishType.PinkStriped).Id);
                 Click(fish);
+                yield return WaitUntilReady(flow);
             }
-
-            yield return null;
 
             var blocked = flow.Session.FindFirstIdleFish(FishType.Orange);
             var blockedView = ViewFor(blocked.Id);
@@ -164,6 +162,22 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(flow.Session.Tanks[0].CurrentTarget, Is.EqualTo(FishType.Orange));
             Assert.That(references.LivesDisplay.text, Is.EqualTo("4"));
             Assert.That(blockedView.transform.parent.name, Is.EqualTo("FishContainer"));
+        }
+
+        private static IEnumerator WaitUntilReady(GameFlowController flow)
+        {
+            var elapsed = 0f;
+            while (flow.IsPresentationBusy
+                || (flow.State != GameState.PlayerInput && flow.State != GameState.Win && flow.State != GameState.Lose))
+            {
+                elapsed += Time.unscaledDeltaTime;
+                if (elapsed > 8f)
+                {
+                    Assert.Fail("Resolution did not finish. State " + flow.State + " busy " + flow.IsPresentationBusy);
+                }
+
+                yield return null;
+            }
         }
 
         private static void AssertDistinctRemainingLayout(BubbleView bubble)
@@ -280,8 +294,7 @@ namespace FishPuzzle.Tests.PlayMode
 
         private static void Click(FishView fish)
         {
-            var eventData = new PointerEventData(EventSystem.current);
-            ExecuteEvents.Execute(fish.gameObject, eventData, ExecuteEvents.pointerClickHandler);
+            PointerGesture.Click(fish);
         }
 
         private static int CountFishViews()

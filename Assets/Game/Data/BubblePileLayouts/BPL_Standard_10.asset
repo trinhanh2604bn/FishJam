@@ -14,70 +14,70 @@ MonoBehaviour:
   m_EditorClassIdentifier: FishPuzzle.Runtime::FishPuzzle.Bubbles.BubblePileLayout
   _slots:
   - _slotId: 0
-    _anchoredPosition: {x: -125, y: -725}
+    _anchoredPosition: {x: -154, y: -310}
     _row: 0
     _column: 0
     _sortingOrder: 40
     _downCandidateSlotIds: 
     _canReceiveSpawnFromTop: 0
   - _slotId: 1
-    _anchoredPosition: {x: 125, y: -725}
+    _anchoredPosition: {x: 146, y: -310}
     _row: 0
     _column: 1
     _sortingOrder: 41
     _downCandidateSlotIds: 
     _canReceiveSpawnFromTop: 0
   - _slotId: 2
-    _anchoredPosition: {x: -250, y: -550}
+    _anchoredPosition: {x: -300, y: -100}
     _row: 1
     _column: 0
     _sortingOrder: 30
     _downCandidateSlotIds: 00000000i
     _canReceiveSpawnFromTop: 0
   - _slotId: 3
-    _anchoredPosition: {x: 0, y: -550}
+    _anchoredPosition: {x: -4, y: -100}
     _row: 1
     _column: 1
     _sortingOrder: 31
     _downCandidateSlotIds: 0000000001000000i
     _canReceiveSpawnFromTop: 0
   - _slotId: 4
-    _anchoredPosition: {x: 250, y: -550}
+    _anchoredPosition: {x: 300, y: -100}
     _row: 1
     _column: 2
     _sortingOrder: 32
     _downCandidateSlotIds: 01000000i
     _canReceiveSpawnFromTop: 0
   - _slotId: 5
-    _anchoredPosition: {x: -125, y: -375}
+    _anchoredPosition: {x: -152, y: 80}
     _row: 2
     _column: 0
     _sortingOrder: 20
     _downCandidateSlotIds: 0200000003000000i
     _canReceiveSpawnFromTop: 0
   - _slotId: 6
-    _anchoredPosition: {x: 125, y: -375}
+    _anchoredPosition: {x: 148, y: 80}
     _row: 2
     _column: 1
     _sortingOrder: 21
     _downCandidateSlotIds: 0300000004000000i
     _canReceiveSpawnFromTop: 0
   - _slotId: 7
-    _anchoredPosition: {x: -250, y: -200}
+    _anchoredPosition: {x: -300, y: 292}
     _row: 3
     _column: 0
     _sortingOrder: 10
     _downCandidateSlotIds: 05000000i
     _canReceiveSpawnFromTop: 1
   - _slotId: 8
-    _anchoredPosition: {x: 0, y: -200}
+    _anchoredPosition: {x: -2, y: 250}
     _row: 3
     _column: 1
     _sortingOrder: 11
     _downCandidateSlotIds: 0500000006000000i
     _canReceiveSpawnFromTop: 1
   - _slotId: 9
-    _anchoredPosition: {x: 250, y: -200}
+    _anchoredPosition: {x: 292, y: 330}
     _row: 3
     _column: 2
     _sortingOrder: 12
