@@ -25,6 +25,8 @@ namespace FishPuzzle.Presentation
         [SerializeField] private FishVisualCatalog _fishCatalog;
         [SerializeField] private GameplayArtCatalog _artCatalog;
         [SerializeField] private AnimationTuning _animationTuning;
+        [Tooltip("Optional SFX clips. Empty slots use soft generated development tones.")]
+        [SerializeField] private GameAudioCatalog _audioCatalog;
         [SerializeField] private GameplaySceneReferences _scene;
         [SerializeField] private GameObject _tankSlotPrefab;
         [SerializeField] private GameObject _badgePrefab;
@@ -57,6 +59,7 @@ namespace FishPuzzle.Presentation
         private LevelSequence _sequence;
         private LevelTransitionView _transition;
         private LevelBadgeView _levelBadge;
+        private AudioFeedbackService _audio;
         private bool _transitioning;
         private int _levelLoadCount;
 
@@ -105,6 +108,9 @@ namespace FishPuzzle.Presentation
         public GameFlowController Flow => _flow;
 
         public ProgressionRuntime Progression => _progression;
+
+        /// <summary>Presentation SFX player created by this bootstrapper and handed to the flow.</summary>
+        public AudioFeedbackService Audio => _audio;
 
         /// <summary>Gold shown in the top HUD (authoritative value from the wallet-owned progress).</summary>
         public string GoldHudText => _scene != null && _scene.GoldDisplay != null ? _scene.GoldDisplay.text : string.Empty;
@@ -463,6 +469,12 @@ namespace FishPuzzle.Presentation
                 () => RequestPlayAgain(),
                 () => HasNextLevel);
             _flow.ConfigureLevelInfo(() => CurrentLevelNumber, () => _sequence != null ? _sequence.Count : 1);
+            if (_audio == null)
+            {
+                _audio = AudioFeedbackService.Create(gameObject, _audioCatalog);
+            }
+
+            _flow.ConfigureFeedback(_audio);
             _flow.Begin(_level, _config, _scene, _fishCatalog, _animationTuning);
         }
 

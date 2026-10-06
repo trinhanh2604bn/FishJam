@@ -57,6 +57,17 @@ namespace FishPuzzle.Core
         private float _lastBubblePopSeconds;
         private BubbleBurstPool _bursts;
         private BubbleBurstPool _launchBursts;
+        private readonly ComboStreakTracker _combo = new ComboStreakTracker();
+        private AudioFeedbackService _audio;
+        private FishTrailEmitter _trail;
+        private ComboFeedbackView _comboView;
+        private Func<float> _presentationClock;
+        private bool _suppressJuiceVfx;
+        private bool _outcomeSoundPlayed;
+        private int _landingFxCount;
+        private int _comboResetCount;
+        private int _promotionCompletionCount;
+        private ComboTier _lastComboTier;
 
         public LevelSession Session => _session;
 
@@ -89,6 +100,56 @@ namespace FishPuzzle.Core
         public WinPanelView WinPanel => _winPanel;
 
         public LosePanelView LosePanel => _losePanel;
+
+        public AudioFeedbackService Audio => _audio;
+
+        public FishTrailEmitter Trail => _trail;
+
+        /// <summary>Trail bubbles requested along fish flights this attempt.</summary>
+        public int TrailEmitCount => _trail != null ? _trail.EmitCount : 0;
+
+        /// <summary>Correct tank landings that played the landing FX (splash, droplets, ripple, bounce, bubble burst, sound).</summary>
+        public int LandingFxCount => _landingFxCount;
+
+        public int ComboStreak => _combo.Streak;
+
+        public float ComboWindowSeconds => _combo.Window;
+
+        public ComboTier LastComboTier => _lastComboTier;
+
+        public int ComboResetCount => _comboResetCount;
+
+        /// <summary>Tank completions reached through Waiting Tray auto-promotion this attempt.</summary>
+        public int PromotionCompletionCount => _promotionCompletionCount;
+
+        public ComboFeedbackView ComboView => _comboView;
+
+        /// <summary>Presentation-only audio. Null is allowed and plays nothing.</summary>
+        public void ConfigureFeedback(AudioFeedbackService audio)
+        {
+            _audio = audio;
+        }
+
+        /// <summary>Test hook: replaces the clock used for the combo window. Null restores unscaled time.</summary>
+        public void SetPresentationClock(Func<float> clock)
+        {
+            _presentationClock = clock;
+        }
+
+        /// <summary>Disables the M13 trail, landing bubble burst and combo text for this attempt (missing-VFX checks).</summary>
+        public void SuppressJuiceVfx()
+        {
+            _suppressJuiceVfx = true;
+            if (_trail != null)
+            {
+                _trail.ReleaseAll();
+            }
+
+            if (_comboView != null)
+            {
+                _comboView.Clear();
+            }
+        }
 
         public void Configure(
             ProgressionRuntime progression,
@@ -179,6 +240,12 @@ namespace FishPuzzle.Core
                 _launchBursts.ReleaseAll();
             }
 
+            ResetCombo();
+            if (_trail != null)
+            {
+                _trail.ReleaseAll();
+            }
+
             if (_losePanel != null)
             {
                 _losePanel.Hide();
@@ -229,6 +296,17 @@ namespace FishPuzzle.Core
                 _launchBursts.ReleaseAll();
             }
 
+            _suppressJuiceVfx = false;
+            _outcomeSoundPlayed = false;
+            _landingFxCount = 0;
+            _promotionCompletionCount = 0;
+            ResetCombo();
+            if (_trail != null)
+            {
+                _trail.ReleaseAll();
+                _trail.ResetCounters();
+            }
+
             _presentationFinished = true;
             _visualLock = false;
             if (animationTuning != null)
@@ -244,6 +322,7 @@ namespace FishPuzzle.Core
             _session = LevelSession.Start(level, config, false);
             _session.SetOutcomeHandler(OnAuthoritativeOutcome);
             EnsureTouchFeedback();
+            EnsureTrail();
             BindVisibleFish();
             RefreshAllBadges();
             RefreshProgress();
@@ -279,6 +358,8 @@ namespace FishPuzzle.Core
                     _unlockModal.ShowInsufficientGold();
                 }
 
+                Sfx(SfxId.InsufficientGold);
+
                 return result;
             }
 
@@ -287,6 +368,7 @@ namespace FishPuzzle.Core
                 return result;
             }
 
+            Sfx(SfxId.UnlockTank);
             if (_unlockModal != null)
             {
                 _unlockModal.Hide();
@@ -324,6 +406,7 @@ namespace FishPuzzle.Core
                         return;
                     }
 
+                    Sfx(SfxId.UnlockTank);
                     if (_unlockModal != null)
                     {
                         _unlockModal.Hide();
@@ -383,6 +466,11 @@ namespace FishPuzzle.Core
 
         private void Update()
         {
+            if (_combo.Streak > 0)
+            {
+                _combo.Expire(PresentationNow());
+            }
+
             if (!_visualLock || _presentationFinished || _tuning == null)
             {
                 return;
@@ -482,6 +570,7 @@ namespace FishPuzzle.Core
 
             _pressedFish = view;
             view.BeginPress(_tuning);
+            Sfx(SfxId.FishPress);
             return true;
         }
 
@@ -531,6 +620,7 @@ namespace FishPuzzle.Core
             if (_touch == null)
             {
                 _touch = TouchFeedbackController.Create(TouchParent(), _art, _tuning);
+                _touch.Rippled += () => Sfx(SfxId.TouchRipple, 1f, 0.6f);
             }
             else
             {
@@ -541,6 +631,251 @@ namespace FishPuzzle.Core
             if (_suppressTouchVfx)
             {
                 _touch.Suppress();
+            }
+        }
+
+        private bool Sfx(SfxId id)
+        {
+            return Sfx(id, 1f, 1f);
+        }
+
+        private bool Sfx(SfxId id, float pitch, float volume)
+        {
+            if (_audio == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return _audio.Play(id, pitch, volume);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private void PlayOutcomeSound(SfxId id)
+        {
+            if (_outcomeSoundPlayed || _suppressOutcome)
+            {
+                return;
+            }
+
+            _outcomeSoundPlayed = true;
+            Sfx(id);
+        }
+
+        private void BindButtonTaps(Component root)
+        {
+            if (root == null)
+            {
+                return;
+            }
+
+            var buttons = root.GetComponentsInChildren<UnityEngine.UI.Button>(true);
+            for (var i = 0; i < buttons.Length; i++)
+            {
+                if (buttons[i] != null)
+                {
+                    buttons[i].onClick.AddListener(() => Sfx(SfxId.ButtonTap));
+                }
+            }
+        }
+
+        private float PresentationNow()
+        {
+            if (_presentationClock != null)
+            {
+                try
+                {
+                    return _presentationClock();
+                }
+                catch (Exception)
+                {
+                    _presentationClock = null;
+                }
+            }
+
+            return Time.unscaledTime;
+        }
+
+        private void ResetCombo()
+        {
+            _combo.Reset();
+            _lastComboTier = ComboTier.None;
+            _comboResetCount++;
+            if (_comboView != null)
+            {
+                _comboView.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Presentation-only streak step for one completed tank group. Never touches score, gold or targets.
+        /// A failure to show text or play sound is swallowed so it cannot stall the completion coroutine.
+        /// </summary>
+        private void PresentComboStep()
+        {
+            var tier = _combo.RegisterCompletion(PresentationNow());
+            _lastComboTier = tier;
+            Sfx(SfxId.Combo, ComboStreakTracker.Pitch(tier), Mathf.Lerp(0.8f, 1f, ((int)tier - 1) / 4f));
+            if (_suppressJuiceVfx)
+            {
+                return;
+            }
+
+            try
+            {
+                EnsureComboView();
+                if (_comboView != null)
+                {
+                    _comboView.Show(tier, ComboAnchor());
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private void EnsureComboView()
+        {
+            if (_comboView != null || _scene == null || _scene.GlobalProgressDisplay == null)
+            {
+                return;
+            }
+
+            var canvas = _scene.GlobalProgressDisplay.canvas;
+            if (canvas == null)
+            {
+                return;
+            }
+
+            Sprite sparkle = null;
+            if (_art != null)
+            {
+                sparkle = _art.CoinSparkle != null ? _art.CoinSparkle : _art.SuccessBurst;
+            }
+
+            _comboView = ComboFeedbackView.Create(
+                canvas.transform,
+                canvas.transform.Find("OverlayRoot"),
+                _scene.GlobalProgressDisplay.font,
+                sparkle);
+        }
+
+        /// <summary>
+        /// Middle-upper gameplay area: between the bottom of the tank board and the top of the Waiting Tray,
+        /// so the text never sits on tank targets, the tray or the bubble pile.
+        /// </summary>
+        private Vector3 ComboAnchor()
+        {
+            var corners = new Vector3[4];
+            var tankBoard = _scene != null && _scene.TankBoard != null ? _scene.TankBoard.transform as RectTransform : null;
+            var tray = _scene != null && _scene.WaitingTray != null ? _scene.WaitingTray.transform as RectTransform : null;
+            if (tankBoard != null && tray != null)
+            {
+                tankBoard.GetWorldCorners(corners);
+                var boardBottom = corners[0].y;
+                var centerX = (corners[0].x + corners[2].x) * 0.5f;
+                tray.GetWorldCorners(corners);
+                var trayTop = corners[1].y;
+                return new Vector3(centerX, (boardBottom + trayTop) * 0.5f, corners[1].z);
+            }
+
+            var canvas = _scene != null && _scene.GlobalProgressDisplay != null ? _scene.GlobalProgressDisplay.canvas : null;
+            var root = canvas != null ? canvas.transform as RectTransform : null;
+            if (root == null)
+            {
+                return Vector3.zero;
+            }
+
+            root.GetWorldCorners(corners);
+            return Vector3.Lerp(corners[0], corners[2], 0.5f) + new Vector3(0f, (corners[2].y - corners[0].y) * 0.2f, 0f);
+        }
+
+        private void EnsureTrail()
+        {
+            var sprite = _art != null ? _art.SmallBubbleParticle : null;
+            if (sprite == null)
+            {
+                sprite = ProceduralVfxSprite.Dot;
+            }
+
+            if (_trail != null)
+            {
+                _trail.SetSprite(sprite);
+                return;
+            }
+
+            var parent = TrailParent();
+            if (parent == null)
+            {
+                return;
+            }
+
+            _trail = FishTrailEmitter.Create(parent, sprite);
+            if (_trail != null)
+            {
+                // Directly above the gameplay board (bubbles, tanks, tray) and below the combo layer and modals.
+                _trail.transform.SetAsLastSibling();
+            }
+        }
+
+        private RectTransform TrailParent()
+        {
+            if (_scene == null)
+            {
+                return null;
+            }
+
+            var board = _scene.BubblePile != null ? _scene.BubblePile.transform.parent as RectTransform : null;
+            if (board != null)
+            {
+                return board;
+            }
+
+            var canvas = _scene.GlobalProgressDisplay != null ? _scene.GlobalProgressDisplay.canvas : null;
+            return canvas != null ? canvas.transform as RectTransform : null;
+        }
+
+        private float TrailInterval(bool toTray)
+        {
+            return _trail != null
+                ? _trail.NextInterval(toTray)
+                : FishTrailEmitter.MaxInterval * (toTray ? FishTrailEmitter.TrayIntervalFactor : 1f);
+        }
+
+        private void EmitTrail(Vector3 worldPosition)
+        {
+            if (_suppressJuiceVfx || _trail == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _trail.Emit(worldPosition);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private void EmitLandingBubbles(Vector3 worldPosition)
+        {
+            if (_suppressJuiceVfx || _trail == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _trail.Burst(worldPosition, 7);
+            }
+            catch (Exception)
+            {
             }
         }
 
@@ -559,12 +894,25 @@ namespace FishPuzzle.Core
             return transform;
         }
 
+        /// <summary>
+        /// Correct tank landing: splash + droplets + ripple here, a short bubble burst around the fish and the plop sound.
+        /// The small tank bounce follows in <see cref="BounceFish"/>. Every landing runs this, including the third fish.
+        /// </summary>
         private void PlayTankSplash(RectTransform anchor)
         {
-            if (_suppressLandingSplash || anchor == null)
+            if (anchor == null)
             {
                 return;
             }
+
+            _landingFxCount++;
+            Sfx(SfxId.TankLand);
+            if (_suppressLandingSplash)
+            {
+                return;
+            }
+
+            EmitLandingBubbles(anchor.TransformPoint(anchor.rect.center));
 
             EnsureFlightLayer();
             if (_flightLayer == null)
@@ -653,6 +1001,7 @@ namespace FishPuzzle.Core
             }
 
             _acceptedRouteCount++;
+            Sfx(SfxId.FishLaunch);
             var turn = _session.LastTurn ?? TurnResolution.Empty;
             if (turn.PoppedBubble)
             {
@@ -685,11 +1034,13 @@ namespace FishPuzzle.Core
                         completedType,
                         result.HasNextTarget,
                         result.NextTarget,
-                        result.ConsumedFishIds);
+                        result.ConsumedFishIds,
+                        false);
                 }
                 else if (result.Outcome == FishSelectionOutcome.RoutedToTank)
                 {
                     RefreshTankBadge(result.TankSlotIndex);
+                    Sfx(SfxId.TankFill);
                 }
 
                 if (_session.State != GameState.Lose)
@@ -760,6 +1111,10 @@ namespace FishPuzzle.Core
             {
                 PlayTankSplash(anchor);
             }
+            else
+            {
+                Sfx(SfxId.TrayLand);
+            }
 
             var tank = toTank ? TankTransform(result.TankSlotIndex) : null;
             yield return BounceFish(view != null ? view.transform : null, tank, _tuning.FishLandingBounceDuration);
@@ -811,16 +1166,18 @@ namespace FishPuzzle.Core
                         completedType,
                         promotion.HasNextTarget,
                         promotion.NextTarget,
-                        promotion.ConsumedFishIds);
+                        promotion.ConsumedFishIds,
+                        true);
                 }
                 else
                 {
                     RefreshTankBadge(promotion.TankSlotIndex);
+                    Sfx(SfxId.TankFill);
                 }
             }
         }
 
-        private IEnumerator PresentCompletion(int slotIndex, FishType completedType, bool hasNext, FishType nextTarget, int[] consumed)
+        private IEnumerator PresentCompletion(int slotIndex, FishType completedType, bool hasNext, FishType nextTarget, int[] consumed, bool fromPromotion)
         {
             _session.HoldForPresentation(GameState.ResolvingTank);
             var capacity = CapacityOf(slotIndex);
@@ -829,6 +1186,14 @@ namespace FishPuzzle.Core
             {
                 badge.ShowTarget(completedType, capacity, capacity, _fishCatalog);
             }
+
+            if (fromPromotion)
+            {
+                _promotionCompletionCount++;
+            }
+
+            Sfx(SfxId.TankComplete);
+            PresentComboStep();
 
             yield return null;
             yield return Wait(_tuning.TankResolveDuration);
@@ -891,6 +1256,7 @@ namespace FishPuzzle.Core
             var parent = rect != null ? rect.parent as RectTransform : null;
             var origin = rect != null ? rect.anchoredPosition : Vector2.zero;
             EmitBubbleBurst(parent, origin);
+            Sfx(SfxId.BubblePop);
 
             var duration = _tuning != null ? _tuning.BubblePopDuration : 0.07f;
             _lastBubblePopSeconds = duration;
@@ -1055,6 +1421,7 @@ namespace FishPuzzle.Core
             if (rect != null)
             {
                 rect.anchoredPosition = destination;
+                Sfx(SfxId.BubbleSettle);
                 yield return BounceRect(rect, _tuning.BubbleLandingBounceDuration);
             }
         }
@@ -1076,6 +1443,7 @@ namespace FishPuzzle.Core
 
             BindBubbleFish(view, bubbleId, false);
             yield return null;
+            Sfx(SfxId.TopSpawn);
             var rect = view.transform as RectTransform;
             var duration = _tuning.BubbleTopSpawnDuration;
             var elapsed = 0f;
@@ -1126,14 +1494,26 @@ namespace FishPuzzle.Core
             }
 
             var elapsed = 0f;
+            var toTray = !hop;
+            var trailClock = 0f;
+            var trailInterval = TrailInterval(toTray);
+            EmitTrail(start);
             while (elapsed < duration)
             {
-                elapsed += Step();
+                var step = Step();
+                elapsed += step;
                 if (rect != null)
                 {
                     var sample = PresentationMotion.Sample(true, elapsed, seconds);
                     var along = hop ? PresentationMotion.Hop(sample.T) : PresentationMotion.EaseOutQuad(sample.T);
                     rect.position = PresentationMotion.QuadraticBezier(start, control, end, along);
+                    trailClock += step;
+                    if (!sample.Completed && trailClock >= trailInterval)
+                    {
+                        trailClock = 0f;
+                        trailInterval = TrailInterval(toTray);
+                        EmitTrail(rect.position);
+                    }
                 }
 
                 ApplyReflow(reflowSeconds <= 0f ? 1f : Mathf.Clamp01(elapsed / reflowSeconds));
@@ -1179,14 +1559,27 @@ namespace FishPuzzle.Core
             var end = anchor.TransformPoint(anchor.rect.center);
             var control = CurveControl(start, end, true);
             var elapsed = 0f;
+            var trailClock = 0f;
+            var trailInterval = TrailInterval(false);
+            Sfx(SfxId.FishFly, 1f, 0.7f);
+            EmitTrail(start);
             while (elapsed < seconds && rect != null)
             {
-                elapsed += Step();
+                var step = Step();
+                elapsed += step;
                 var sample = PresentationMotion.Sample(rect != null, elapsed, seconds);
                 rect.position = PresentationMotion.QuadraticBezier(start, control, end, PresentationMotion.Hop(sample.T));
                 if (sample.Completed)
                 {
                     break;
+                }
+
+                trailClock += step;
+                if (trailClock >= trailInterval)
+                {
+                    trailClock = 0f;
+                    trailInterval = TrailInterval(false);
+                    EmitTrail(rect.position);
                 }
 
                 yield return null;
@@ -2216,6 +2609,7 @@ namespace FishPuzzle.Core
             // Settle first (idempotent per attempt) so the panel shows the already-updated score.
             OnAuthoritativeOutcome(GameState.Win);
             LockAllFishInput();
+            PlayOutcomeSound(SfxId.Win);
             if (_winPanel == null)
             {
                 var parent = OverlayParent();
@@ -2232,6 +2626,7 @@ namespace FishPuzzle.Core
                     () => _nextLevel?.Invoke(),
                     () => _replayLevel?.Invoke(),
                     () => _playAgain?.Invoke());
+                BindButtonTaps(_winPanel);
             }
 
             var levelNumber = LevelNumber();
@@ -2248,6 +2643,8 @@ namespace FishPuzzle.Core
             // Settle first (idempotent per attempt) so the HUD already shows the deducted heart.
             OnAuthoritativeOutcome(GameState.Lose);
             LockAllFishInput();
+            ResetCombo();
+            PlayOutcomeSound(SfxId.Lose);
             if (_losePanel != null)
             {
                 _losePanel.Show(LifeCost(), LevelNumber());
@@ -2262,6 +2659,7 @@ namespace FishPuzzle.Core
             }
 
             _losePanel = LosePanelView.Create(parent, _scene.GlobalProgressDisplay.font, _retryAttempt, _art, LifeCost(), LevelNumber());
+            BindButtonTaps(_losePanel);
         }
 
         private Transform OverlayParent()
@@ -2377,6 +2775,7 @@ namespace FishPuzzle.Core
                 ConfirmRewardUnlock,
                 CloseUnlockModal,
                 _art);
+            BindButtonTaps(_unlockModal);
         }
 
         private bool HasNextLevel()

@@ -2268,6 +2268,25 @@ Popup transitions
 
 Presentation failure must never silently corrupt domain state.
 
+M13 presentation-only feedback (approved by the user):
+
+```text
+Completion streak / combo text:
+  each TANK GROUP completion → streak += 1 if within 3.0 s of the previous
+  completion, else streak = 1 (auto-promotion cascades count)
+  1 GOOD!  2 GREAT!  3 EXCELLENT!  4 AMAZING!  5+ WELL DONE!
+  combo cue pitch 1.00 / 1.08 / 1.16 / 1.24 / 1.32
+  reset on timeout, Lose, Retry, Replay, Next Level, new level init
+  never changes score, gold, targets, difficulty; never persisted
+
+Audio: AudioFeedbackService (pooled AudioSources, injected by the scene
+  bootstrapper, no singleton). Clips come from GameAudioCatalog; empty slots
+  use soft generated development tones. Missing audio never blocks gameplay.
+
+Fish trail bubbles, press outline/glow, tank landing burst: pooled, capped,
+  raycastTarget = false.
+```
+
 ---
 
 # 65. TEST MATRIX — MANDATORY

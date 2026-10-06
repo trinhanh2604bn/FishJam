@@ -36,6 +36,9 @@ namespace FishPuzzle.Presentation
 
         public bool IsHolding => !_suppressed && (_deviceHolding || _syntheticHold);
 
+        /// <summary>Raised when a touch ripple starts. Presentation listeners only (for example the touch sound).</summary>
+        public event System.Action Rippled;
+
         public static TouchFeedbackController Create(Transform parent, GameplayArtCatalog art, AnimationTuning tuning)
         {
             var host = new GameObject("TouchFeedback", typeof(RectTransform), typeof(TouchFeedbackController));
@@ -200,6 +203,7 @@ namespace FishPuzzle.Presentation
             {
                 var duration = _tuning != null ? _tuning.TouchRippleDuration : 0.35f;
                 ripple.Play(local, RippleSprite(), duration);
+                Rippled?.Invoke();
             }
 
             var initial = _bubbleLimit < 2 ? _bubbleLimit : 2;

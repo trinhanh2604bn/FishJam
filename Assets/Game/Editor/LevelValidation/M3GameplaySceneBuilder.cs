@@ -26,6 +26,7 @@ namespace FishPuzzle.EditorTools
         private const string PreviewScenePath = "Assets/Game/Scenes/Dev/M1_AssetPreview.unity";
         private const string LevelPath = "Assets/Game/Data/Levels/Level_001.asset";
         private const string LevelCatalogPath = "Assets/Game/Data/Config/LevelCatalog.asset";
+        private const string AudioCatalogPath = "Assets/Game/Data/Config/GameAudioCatalog.asset";
         private const string ConfigPath = "Assets/Game/Data/Config/GameConfig.asset";
         private const string FishCatalogPath = "Assets/Game/Data/Config/FishVisualCatalog.asset";
         private const string ArtCatalogPath = "Assets/Game/Data/Config/GameplayArtCatalog.asset";
@@ -334,6 +335,7 @@ namespace FishPuzzle.EditorTools
             bootstrapSerialized.FindProperty("_config").objectReferenceValue = config;
             bootstrapSerialized.FindProperty("_fishCatalog").objectReferenceValue = fishCatalog;
             bootstrapSerialized.FindProperty("_artCatalog").objectReferenceValue = art;
+            bootstrapSerialized.FindProperty("_audioCatalog").objectReferenceValue = AssetDatabase.LoadAssetAtPath<GameAudioCatalog>(AudioCatalogPath);
             bootstrapSerialized.FindProperty("_scene").objectReferenceValue = references;
             bootstrapSerialized.FindProperty("_tankSlotPrefab").objectReferenceValue = tankPrefab;
             bootstrapSerialized.FindProperty("_badgePrefab").objectReferenceValue = badgePrefab;

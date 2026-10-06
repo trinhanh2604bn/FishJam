@@ -264,7 +264,15 @@ namespace FishPuzzle.Presentation
         {
             if (_collapsedRetryButton != null)
             {
-                SceneObjectCleanup.DestroyObject(_collapsedRetryButton.gameObject);
+                // Plain Destroy: during scene unload the button is already being destroyed and cannot be reparented.
+                if (Application.isPlaying)
+                {
+                    Destroy(_collapsedRetryButton.gameObject);
+                }
+                else
+                {
+                    SceneObjectCleanup.DestroyObject(_collapsedRetryButton.gameObject);
+                }
             }
         }
     }

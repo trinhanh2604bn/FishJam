@@ -20,6 +20,7 @@ namespace FishPuzzle.Presentation
         private Action<FishView> _onCommit;
         private Action<FishView> _onCancel;
         private FishPressFeedback _pressFeedback;
+        private FishPressHighlight _highlight;
         private FishIdleSway _idleSway;
         private AnimationTuning _tuning;
         private Rect _pressScreenRect;
@@ -39,6 +40,10 @@ namespace FishPuzzle.Presentation
         public float PressScale => _pressFeedback != null ? _pressFeedback.Scale : 1f;
 
         public float PressAngle => _pressFeedback != null ? _pressFeedback.Angle : 0f;
+
+        public bool IsHighlighted => _highlight != null && _highlight.IsShown;
+
+        public FishPressHighlight Highlight => _highlight;
 
         public void SetPresentationTuning(AnimationTuning tuning)
         {
@@ -82,6 +87,7 @@ namespace FishPuzzle.Presentation
 
             Idle().Pause();
             Press().Begin(PressRect(), _tuning);
+            Highlighter().Show(PressRect());
         }
 
         public void AdvancePress(float delta)
@@ -97,6 +103,11 @@ namespace FishPuzzle.Presentation
             if (_pressFeedback != null)
             {
                 _pressFeedback.End();
+            }
+
+            if (_highlight != null)
+            {
+                _highlight.Hide();
             }
 
             PlayIdle();
@@ -233,6 +244,20 @@ namespace FishPuzzle.Presentation
             }
 
             return _pressFeedback;
+        }
+
+        private FishPressHighlight Highlighter()
+        {
+            if (_highlight == null)
+            {
+                _highlight = GetComponent<FishPressHighlight>();
+                if (_highlight == null)
+                {
+                    _highlight = gameObject.AddComponent<FishPressHighlight>();
+                }
+            }
+
+            return _highlight;
         }
 
         private RectTransform PressRect()

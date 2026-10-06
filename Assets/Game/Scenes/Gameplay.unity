@@ -977,6 +977,7 @@ MonoBehaviour:
   _fishCatalog: {fileID: 11400000, guid: b0ead4e566537884ea141eb118a77d92, type: 2}
   _artCatalog: {fileID: 11400000, guid: 38ae8d1a2bc683440a85c8a5864ef510, type: 2}
   _animationTuning: {fileID: 11400000, guid: f5c8d3b20a4e4f69b7d1c2e30f908152, type: 2}
+  _audioCatalog: {fileID: 11400000, guid: b800b1e0491c3394de4e2b3438fa35c9, type: 2}
   _scene: {fileID: 1061759498}
   _tankSlotPrefab: {fileID: 7494060193415462262, guid: 7c4071f084476984fa1d38396c2094a0, type: 3}
   _badgePrefab: {fileID: 4365236585746006345, guid: 2c91919eceecd9541949cc04e663ac3d, type: 3}
