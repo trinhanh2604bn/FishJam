@@ -43,7 +43,7 @@ namespace FishPuzzle.AssetPipeline
                 var bubblePrefab = CreateBubblePrefab(artCatalog);
                 var badgePrefab = CreateBadgePrefab(artCatalog, font);
                 var tankPrefab = CreateTankPrefab(artCatalog);
-                var trayPrefab = CreateWaitingTrayPrefab();
+                var trayPrefab = CreateWaitingTrayPrefab(artCatalog);
                 CreatePreviewScene(artCatalog, fishCatalog, font, fishPrefab, bubblePrefab, badgePrefab, tankPrefab, trayPrefab);
                 AssetDatabase.SaveAssets();
                 var report = VerifyScene();
@@ -229,28 +229,34 @@ namespace FishPuzzle.AssetPipeline
             });
         }
 
-        private static GameObject CreateWaitingTrayPrefab()
+        private static GameObject CreateWaitingTrayPrefab(GameplayArtCatalog catalog)
         {
-            var frameSprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
             return BuildPrefab(TrayPrefabPath, "PF_WaitingTray", root =>
             {
                 Place(root.GetComponent<RectTransform>(), Vector2.zero, new Vector2(1000f, 168f));
-                var shelf = CreateImage("Shelf", root.transform, frameSprite, false);
-                Stretch(shelf.rectTransform);
-                shelf.color = new Color(0.93f, 0.95f, 0.97f, 0.92f);
-                shelf.type = frameSprite != null ? Image.Type.Sliced : Image.Type.Simple;
+                // Wooden bar along the bottom. The shelf sprite has transparent padding above and below
+                // the plank, so the rect is taller/wider than the visible bar and offset downwards.
+                var shelf = CreateImage("Shelf", root.transform, catalog.TankShelf, false);
+                var shelfRect = shelf.rectTransform;
+                shelfRect.anchorMin = Vector2.zero;
+                shelfRect.anchorMax = new Vector2(1f, 0f);
+                shelfRect.pivot = new Vector2(0.5f, 0f);
+                shelfRect.anchoredPosition = new Vector2(0f, -37f);
+                shelfRect.sizeDelta = new Vector2(45f, 105f);
+                shelf.raycastTarget = false;
+                // Glass slots rest on top of the bar.
                 var slots = CreateRect("Slots", root.transform);
-                Inset(slots, 10f);
+                Stretch(slots);
+                slots.offsetMin = new Vector2(0f, 18f);
                 for (var i = 0; i < 5; i++)
                 {
-                    var slot = CreateImage("Slot_" + i, slots, frameSprite, false);
+                    var slot = CreateImage("Slot_" + i, slots, catalog.TankFrontGlass, false);
                     var rect = slot.rectTransform;
                     rect.anchorMin = new Vector2(i / 5f, 0f);
                     rect.anchorMax = new Vector2((i + 1) / 5f, 1f);
-                    rect.offsetMin = new Vector2(6f, 6f);
-                    rect.offsetMax = new Vector2(-6f, -6f);
-                    slot.color = new Color(0.78f, 0.9f, 0.96f, 1f);
-                    slot.type = frameSprite != null ? Image.Type.Sliced : Image.Type.Simple;
+                    // Widen into the glass sprite's transparent margin so neighbouring slots sit flush.
+                    rect.offsetMin = new Vector2(-4f, 0f);
+                    rect.offsetMax = new Vector2(4f, 0f);
                     slot.raycastTarget = false;
                 }
             });
