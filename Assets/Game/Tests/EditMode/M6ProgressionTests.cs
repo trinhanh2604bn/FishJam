@@ -15,7 +15,7 @@ namespace FishPuzzle.Tests.EditMode
         private const string ConfigPath = "Assets/Game/Data/Config/GameConfig.asset";
 
         [Test]
-        public void Win_AwardsTwentyScoreOnce()
+        public void Win_AwardsTwentyGoldOnce()
         {
             var config = Config();
             var progression = new ProgressionRuntime(PlayerProgress.CreateDevelopmentDefaults());
@@ -26,12 +26,13 @@ namespace FishPuzzle.Tests.EditMode
             SelectCount(session, FishType.Orange, config.TankCapacity);
 
             Assert.That(session.State, Is.EqualTo(GameState.Win));
-            Assert.That(config.LevelCompleteScoreReward, Is.EqualTo(20));
-            Assert.That(progression.Progress.Score, Is.EqualTo(20));
+            Assert.That(config.LevelCompleteGoldReward, Is.EqualTo(20));
+            Assert.That(progression.Progress.Gold, Is.EqualTo(1020));
+            Assert.That(progression.Progress.Score, Is.EqualTo(0), "M12.1: Score is no longer the win reward.");
         }
 
         [Test]
-        public void DuplicateWin_DoesNotAwardScoreAgain()
+        public void DuplicateWin_DoesNotAwardGoldAgain()
         {
             var config = Config();
             var progression = new ProgressionRuntime(PlayerProgress.CreateDevelopmentDefaults());
@@ -45,7 +46,7 @@ namespace FishPuzzle.Tests.EditMode
 
             Assert.That(second, Is.False);
             Assert.That(third, Is.False);
-            Assert.That(progression.Progress.Score, Is.EqualTo(20));
+            Assert.That(progression.Progress.Gold, Is.EqualTo(1020));
         }
 
         [Test]

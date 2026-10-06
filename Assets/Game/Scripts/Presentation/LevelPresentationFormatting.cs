@@ -25,6 +25,17 @@ namespace FishPuzzle.Presentation
             return levelId;
         }
 
+        /// <summary>HUD badge and result header text, e.g. "Màn 5".</summary>
+        public static string FormatLevelBadge(string levelId)
+        {
+            return "Màn " + FormatLevelLabel(levelId);
+        }
+
+        public static string FormatLevelBadge(int levelNumber)
+        {
+            return "Màn " + levelNumber.ToString(CultureInfo.InvariantCulture);
+        }
+
         public static string FormatProgress(int collected, int totalRequired)
         {
             return collected.ToString(CultureInfo.InvariantCulture)

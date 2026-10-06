@@ -54,9 +54,9 @@ namespace FishPuzzle.Presentation
         private GameFlowController _flow;
         private ProgressionRuntime _progression;
         private MockRewardedAdService _rewardedAds;
-        private TextMeshProUGUI _scoreLabel;
         private LevelSequence _sequence;
         private LevelTransitionView _transition;
+        private LevelBadgeView _levelBadge;
         private bool _transitioning;
         private int _levelLoadCount;
 
@@ -78,6 +78,8 @@ namespace FishPuzzle.Presentation
         public int LevelLoadCount => _levelLoadCount;
 
         public LevelTransitionView Transition => _transition;
+
+        public LevelBadgeView LevelBadge => _levelBadge;
 
         public string LevelLabel => _scene != null && _scene.LevelLabel != null ? _scene.LevelLabel.text : string.Empty;
 
@@ -104,7 +106,11 @@ namespace FishPuzzle.Presentation
 
         public ProgressionRuntime Progression => _progression;
 
-        public string ScoreLabel => _scoreLabel != null ? _scoreLabel.text : string.Empty;
+        /// <summary>Gold shown in the top HUD (authoritative value from the wallet-owned progress).</summary>
+        public string GoldHudText => _scene != null && _scene.GoldDisplay != null ? _scene.GoldDisplay.text : string.Empty;
+
+        /// <summary>Hearts shown in the top HUD (authoritative value from the life-owned progress).</summary>
+        public string LivesHudText => _scene != null && _scene.LivesDisplay != null ? _scene.LivesDisplay.text : string.Empty;
 
         public int TotalFishRequired => _level != null ? _level.TotalFishRequired : 0;
 
@@ -153,7 +159,7 @@ namespace FishPuzzle.Presentation
                 return;
             }
 
-            _scene.LevelLabel.text = LevelPresentationFormatting.FormatLevelLabel(_level.LevelId);
+            ApplyLevelLabel();
             _scene.GoldDisplay.text = LevelPresentationFormatting.FormatCount(_previewGoldDisplay);
             _scene.LivesDisplay.text = LevelPresentationFormatting.FormatCount(_previewLivesDisplay);
             _scene.GlobalProgressDisplay.text = LevelPresentationFormatting.FormatProgress(CollectedFishDisplay, _level.TotalFishRequired);
@@ -299,7 +305,7 @@ namespace FishPuzzle.Presentation
             DestroyRemainingFish();
             SelectSequenceIndex(levelIndex);
             _level = next;
-            _scene.LevelLabel.text = LevelPresentationFormatting.FormatLevelLabel(_level.LevelId);
+            ApplyLevelLabel();
             PresentAttemptVisuals();
             BindLockedTankClicks();
             _flow.Begin(_level, _config, _scene, _fishCatalog, _animationTuning);
@@ -391,13 +397,28 @@ namespace FishPuzzle.Presentation
             return false;
         }
 
+        /// <summary>HUD badge "Màn N", synchronized on start, Retry, Replay, Next Level and Play Again.</summary>
+        private void ApplyLevelLabel()
+        {
+            if (_scene == null || _scene.LevelLabel == null || _level == null)
+            {
+                return;
+            }
+
+            _scene.LevelLabel.text = LevelPresentationFormatting.FormatLevelBadge(_level.LevelId);
+            if (Application.isPlaying && _levelBadge == null)
+            {
+                _levelBadge = LevelBadgeView.Apply(_scene.LevelLabel, _artCatalog);
+            }
+        }
+
         private void ShowLevelBanner()
         {
             EnsureTransitionView();
             if (_transition != null && _level != null)
             {
                 _transition.ShowBanner(
-                    "Level " + LevelPresentationFormatting.FormatLevelLabel(_level.LevelId),
+                    LevelPresentationFormatting.FormatLevelBadge(_level.LevelId),
                     _levelBannerSeconds);
             }
         }
@@ -441,6 +462,7 @@ namespace FishPuzzle.Presentation
                 () => RequestReplayLevel(),
                 () => RequestPlayAgain(),
                 () => HasNextLevel);
+            _flow.ConfigureLevelInfo(() => CurrentLevelNumber, () => _sequence != null ? _sequence.Count : 1);
             _flow.Begin(_level, _config, _scene, _fishCatalog, _animationTuning);
         }
 
@@ -496,45 +518,6 @@ namespace FishPuzzle.Presentation
             {
                 _scene.LivesDisplay.text = LevelPresentationFormatting.FormatCount(_progression.Progress.Lives);
             }
-
-            EnsureScoreLabel();
-            if (_scoreLabel != null)
-            {
-                _scoreLabel.text = LevelPresentationFormatting.FormatCount(_progression.Progress.Score);
-            }
-        }
-
-        private void EnsureScoreLabel()
-        {
-            if (_scoreLabel != null || _scene.GoldDisplay == null)
-            {
-                return;
-            }
-
-            var goldPanel = _scene.GoldDisplay.transform.parent as RectTransform;
-            var hud = goldPanel != null ? goldPanel.parent : _scene.GoldDisplay.transform.parent;
-            if (hud == null)
-            {
-                return;
-            }
-
-            var labelObject = new GameObject("ScoreLabel", typeof(RectTransform));
-            labelObject.SetActive(false);
-            labelObject.transform.SetParent(hud, false);
-            var rect = labelObject.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 1f);
-            rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = new Vector2(-8f, -96f);
-            rect.sizeDelta = new Vector2(150f, 56f);
-            _scoreLabel = labelObject.AddComponent<TextMeshProUGUI>();
-            _scoreLabel.font = _scene.GoldDisplay.font;
-            _scoreLabel.fontSize = 40f;
-            _scoreLabel.alignment = TMPro.TextAlignmentOptions.Center;
-            _scoreLabel.color = new Color(0.18f, 0.16f, 0.12f, 1f);
-            _scoreLabel.raycastTarget = false;
-            _scoreLabel.text = LevelPresentationFormatting.FormatCount(_progression.Progress.Score);
-            labelObject.SetActive(true);
         }
 
         private static void DestroyRemainingFish()

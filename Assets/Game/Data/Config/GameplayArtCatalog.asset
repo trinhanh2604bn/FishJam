@@ -53,3 +53,10 @@ MonoBehaviour:
   _successBurst: {fileID: 21300000, guid: a40efe99aa0402845b63a45713598fc0, type: 3}
   _coinSparkle: {fileID: 21300000, guid: 60e771cd5eb53544789831a715c5b246, type: 3}
   _failFlash: {fileID: 21300000, guid: 3c38f0de076e4044aa1f10708bbec366, type: 3}
+  _levelBadge: {fileID: 21300000, guid: 6b7da8eac9874ed68f5864f5c494589c, type: 3}
+  _levelBadgeFishIcon: {fileID: 21300000, guid: 7b3fbba232cc4e70b7ceb68bf405718a, type: 3}
+  _resultPanel: {fileID: 21300000, guid: 5f03d007d81445a1a6921356ab00ade1, type: 3}
+  _progressTrack: {fileID: 21300000, guid: 6e94e9c2e9284c0b9aeb328e8735ce27, type: 3}
+  _progressFill: {fileID: 21300000, guid: 99a472e0e1bb4b449575ec02e5cd9737, type: 3}
+  _rewardPlate: {fileID: 21300000, guid: 3d9b28a78de24d88961811c11b52f4bb, type: 3}
+  _pearl: {fileID: 21300000, guid: fa8a5699b7539224caa2bc22c8a831a5, type: 3}

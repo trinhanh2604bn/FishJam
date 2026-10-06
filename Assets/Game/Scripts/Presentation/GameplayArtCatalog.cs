@@ -56,6 +56,15 @@ namespace FishPuzzle.Presentation
         [SerializeField] private Sprite _coinSparkle;
         [SerializeField] private Sprite _failFlash;
 
+        [Header("M12 Result UI and HUD (optional; views fall back to flat colors)")]
+        [SerializeField] private Sprite _levelBadge;
+        [SerializeField] private Sprite _levelBadgeFishIcon;
+        [SerializeField] private Sprite _resultPanel;
+        [SerializeField] private Sprite _progressTrack;
+        [SerializeField] private Sprite _progressFill;
+        [SerializeField] private Sprite _rewardPlate;
+        [SerializeField] private Sprite _pearl;
+
         public Sprite GameplayBackground => _gameplayBackground;
         public Sprite BubbleBack => _bubbleBack;
         public Sprite BubbleFront => _bubbleFront;
@@ -98,6 +107,14 @@ namespace FishPuzzle.Presentation
         public Sprite SuccessBurst => _successBurst;
         public Sprite CoinSparkle => _coinSparkle;
         public Sprite FailFlash => _failFlash;
+
+        public Sprite LevelBadge => _levelBadge;
+        public Sprite LevelBadgeFishIcon => _levelBadgeFishIcon;
+        public Sprite ResultPanel => _resultPanel;
+        public Sprite ProgressTrack => _progressTrack;
+        public Sprite ProgressFill => _progressFill;
+        public Sprite RewardPlate => _rewardPlate;
+        public Sprite Pearl => _pearl;
 
         public List<string> GetMissingRequiredReferences()
         {

@@ -38,7 +38,7 @@ TANK_CAPACITY                   = 3
 WAITING_TRAY_SLOTS              = 5
 WAITING_TRAY_FAIL_COUNT         = 5
 
-LEVEL_COMPLETE_POINT_REWARD     = 20
+LEVEL_COMPLETE_GOLD_REWARD      = 20
 LOSE_LIFE_COST                  = 1
 
 EXTRA_TANK_GOLD_UNLOCK_COST     = 600
@@ -878,31 +878,26 @@ Do not silently accept inconsistent data.
 
 # 23. WIN REWARD
 
-Explicit current product rule:
+Explicit current product rule (M12.1 — overrides the earlier "+20 Score" rule):
 
 ```text
-Win one level → +20 points
+Win one level → +20 Gold
 ```
 
-Award exactly once.
+Award exactly once per completed attempt. Re-opening the Win panel or a duplicate outcome callback must not award again.
 
-Suggested authoritative method:
+Authoritative method:
 
 ```text
-ScoreService.AwardLevelCompletion(20)
+WalletService.AwardLevelCompletion(GameConfig.LevelCompleteGoldReward = 20)
 ```
 
-The supplied reference reward screen visually shows a coin-like `20`.
+The Win screen shows the reward as coin icon + `+20` (Gold), and the top Gold HUD updates as soon as the reward commits.
 
-Because the explicit product rule says “20 points,” current build should treat it as:
+Gold and Hearts persist across Next Level, Replay, Retry and level transitions; a new LevelSession never resets them.
+WalletService owns Gold (win reward, tank unlock spend of 600); LifeService owns Hearts. UI never mutates either.
 
-```text
-+20 Score
-```
-
-unless the user later confirms that `20` should instead be Gold.
-
-Keep reward type data-driven so this can be changed without gameplay rewrites.
+There is no standalone Score number in the gameplay HUD. The HUD shows only: Level badge | Gold | Hearts.
 
 ---
 
@@ -2655,7 +2650,7 @@ Win.
 Expected:
 
 ```text
-Score +20 exactly once
+Gold +20 exactly once
 ```
 
 Replaying UI animation does not duplicate reward.
@@ -2899,7 +2894,7 @@ Maintain:
 - Plus button.
 - Settings.
 - Global fish progress block.
-- Score display.
+- No standalone Score display (M12.1: HUD = Level badge | Gold | Hearts).
 
 ## Result UI
 
@@ -2974,7 +2969,7 @@ The core game is ready only if:
 - Every standard bubble contains exactly 3 distinct FishTypes.
 - Exact fish quantities match all target groups.
 - Global progress reaches TotalFishRequired to win.
-- Win awards exactly 20 points.
+- Win awards exactly 20 Gold.
 - Restart works.
 - No duplicate fish from rapid tap.
 - No input while resolution/pile motion is active.
@@ -3156,7 +3151,7 @@ When a bubble becomes empty:
 
 Global collected fish reaches required total:
 → Win.
-→ +20 points exactly once.
+→ +20 Gold exactly once.
 
 Waiting Tray reaches 5:
 → Lose.

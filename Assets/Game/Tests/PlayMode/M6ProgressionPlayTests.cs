@@ -35,7 +35,7 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(0));
             Assert.That(references.LivesDisplay.text, Is.EqualTo("5"));
             Assert.That(references.GoldDisplay.text, Is.EqualTo("1000"));
-            Assert.That(bootstrap.ScoreLabel, Is.EqualTo("0"));
+            Assert.That(GameObject.Find("ScoreLabel"), Is.Null, "M12.1: no standalone Score HUD.");
 
             for (var i = 0; i < 5; i++)
             {
@@ -139,16 +139,17 @@ namespace FishPuzzle.Tests.PlayMode
 
             Assert.That(flow.State, Is.EqualTo(GameState.Win));
             Assert.That(flow.IsWinPanelVisible, Is.True);
-            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(20));
-            Assert.That(bootstrap.ScoreLabel, Is.EqualTo("20"));
-            Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(4));
-            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(400));
+            // M12.1: win grants +20 Gold on top of the post-unlock balance (1000 - 600 + 20).
+            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(0));
+            Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(4), "Win does not restore hearts.");
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(420));
             Assert.That(references.LivesDisplay.text, Is.EqualTo("4"));
-            Assert.That(references.GoldDisplay.text, Is.EqualTo("400"));
+            Assert.That(references.GoldDisplay.text, Is.EqualTo("420"));
+            Assert.That(Flow().WinPanel.GoldText, Is.EqualTo("420"));
             flow.PresentCurrentOutcome();
             flow.PresentCurrentOutcome();
-            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(20));
-            Assert.That(bootstrap.ScoreLabel, Is.EqualTo("20"));
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(420));
+            Assert.That(references.GoldDisplay.text, Is.EqualTo("420"));
             Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(4));
             yield return null;
             Assert.That(Count<WinPanelView>(), Is.EqualTo(1));

@@ -34,13 +34,15 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(bootstrap.Catalog.Count, Is.EqualTo(LevelCount));
             Assert.That(bootstrap.CurrentLevelIndex, Is.EqualTo(0));
             Assert.That(bootstrap.LevelId, Is.EqualTo("level_001"));
-            Assert.That(bootstrap.LevelLabel, Is.EqualTo("1"));
+            Assert.That(bootstrap.LevelLabel, Is.EqualTo("Màn 1"));
+            Assert.That(bootstrap.LevelBadge, Is.Not.Null, "HUD level badge is applied.");
+            Assert.That(bootstrap.LevelBadge.Icon, Is.Not.Null);
             Assert.That(bootstrap.GlobalProgressLabel, Is.EqualTo("0 / 9"));
             Assert.That(bootstrap.VisibleBubbleCount, Is.EqualTo(3), "Level 1 starts with only 3 bubbles.");
             Assert.That(bootstrap.PendingBubbleCount, Is.EqualTo(0));
             Assert.That(bootstrap.HasNextLevel, Is.True);
             Assert.That(bootstrap.Transition, Is.Not.Null);
-            Assert.That(bootstrap.Transition.BannerText, Is.EqualTo("Level 1"));
+            Assert.That(bootstrap.Transition.BannerText, Is.EqualTo("Màn 1"));
             Assert.That(bootstrap.Transition.IsFadeBlocking, Is.False);
             Assert.That(Flow().State, Is.EqualTo(GameState.PlayerInput));
             yield return null;
@@ -57,7 +59,7 @@ namespace FishPuzzle.Tests.PlayMode
                 var flow = Flow();
                 AssertFreshLevel(bootstrap, flow, index);
                 AssertFishCentersInsideBubbles(bootstrap);
-                Assert.That(bootstrap.Transition.BannerText, Is.EqualTo("Level " + (index + 1)));
+                Assert.That(bootstrap.Transition.BannerText, Is.EqualTo("Màn " + (index + 1)));
             }
         }
 
@@ -67,13 +69,18 @@ namespace FishPuzzle.Tests.PlayMode
         {
             var bootstrap = Bootstrap();
             yield return PlayToWin(bootstrap);
-            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(20));
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(1020));
+            Assert.That(bootstrap.GoldHudText, Is.EqualTo("1020"), "Gold HUD updates when the reward commits.");
             var panel = Flow().WinPanel;
             Assert.That(panel, Is.Not.Null);
-            Assert.That(panel.Message, Is.EqualTo("Win"));
-            Assert.That(panel.Subtitle, Is.EqualTo(WinPanelView.LevelCompletedText));
-            Assert.That(panel.RewardText, Is.EqualTo("+20 Score"));
-            Assert.That(panel.PrimaryButtonText, Is.EqualTo(WinPanelView.NextLevelText));
+            Assert.That(panel.Message, Is.EqualTo(WinPanelView.TitleText));
+            Assert.That(panel.Subtitle, Is.Empty, "All-levels caption only on the last level.");
+            Assert.That(panel.RewardText, Is.EqualTo("+20"));
+            Assert.That(panel.GoldText, Is.EqualTo("1020"), "Win screen shows the already-updated gold.");
+            Assert.That(panel.ProgressCaption, Is.EqualTo(WinPanelView.ProgressCaptionText));
+            Assert.That(panel.ProgressText, Is.EqualTo("1/" + LevelCount));
+            Assert.That(panel.PrimaryButtonText, Is.EqualTo(WinPanelView.ClaimText));
+            Assert.That(panel.DoubleButton, Is.Not.Null);
             Assert.That(panel.ReplayButton, Is.Not.Null);
 
             panel.ReplayButton.onClick.Invoke();
@@ -81,20 +88,23 @@ namespace FishPuzzle.Tests.PlayMode
             yield return WaitForTransition(bootstrap);
             AssertFreshLevel(bootstrap, Flow(), 0);
             Assert.That(bootstrap.LevelLoadCount, Is.EqualTo(1), "Double tap on Replay must rebuild once.");
-            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(20));
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(1020), "Replay keeps gold.");
+            Assert.That(bootstrap.GoldHudText, Is.EqualTo("1020"));
 
             yield return PlayToWin(bootstrap);
-            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(40), "+20 once per won attempt.");
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(1040), "+20 Gold once per won attempt.");
             Flow().PresentCurrentOutcome();
-            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(40));
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(1040));
 
             Flow().WinPanel.PrimaryButton.onClick.Invoke();
             Flow().WinPanel.PrimaryButton.onClick.Invoke();
             yield return WaitForTransition(bootstrap);
             AssertFreshLevel(bootstrap, Flow(), 1);
             Assert.That(bootstrap.LevelLoadCount, Is.EqualTo(2));
-            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(40));
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(1040), "Next level keeps gold.");
+            Assert.That(bootstrap.GoldHudText, Is.EqualTo("1040"));
             Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(5));
+            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(0), "Score is no longer awarded.");
         }
 
         [UnityTest]
@@ -106,7 +116,6 @@ namespace FishPuzzle.Tests.PlayMode
             yield return null;
             var flow = Flow();
             var gold = bootstrap.Progression.Progress.Gold;
-            var score = bootstrap.Progression.Progress.Score;
 
             // Level_002 starts with Orange and GreenStriped targets. Five non-matching taps fill the tray.
             yield return TapNonMatching(flow, 5);
@@ -115,8 +124,12 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(flow.IsLosePanelVisible, Is.True);
             Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(4));
             var lose = flow.LosePanel;
-            Assert.That(lose.Message, Is.EqualTo("Lose"));
-            Assert.That(lose.LifeCostText, Is.EqualTo("-1 Heart"));
+            Assert.That(lose.Message, Is.EqualTo(LosePanelView.TitleText));
+            Assert.That(lose.HeaderText, Is.EqualTo("Màn 2"));
+            Assert.That(lose.LifeCostText, Is.EqualTo("-1"));
+            Assert.That(Object.FindAnyObjectByType<GameplaySceneReferences>().LivesDisplay.text, Is.EqualTo("4"), "HUD hearts already updated.");
+            flow.PresentCurrentOutcome();
+            Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(4), "Re-presenting the outcome does not deduct again.");
             Assert.That(lose.RetryButton, Is.Not.Null);
             Assert.That(lose.CloseButton, Is.Not.Null);
 
@@ -128,7 +141,7 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(flow.IsLosePanelVisible, Is.False);
             Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(4), "Retry must not deduct another heart.");
             Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(gold));
-            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(score));
+            Assert.That(bootstrap.LivesHudText, Is.EqualTo("4"));
             Assert.That(Count<LosePanelView>(), Is.EqualTo(1));
         }
 
@@ -171,14 +184,16 @@ namespace FishPuzzle.Tests.PlayMode
                 var levelStarted = Time.realtimeSinceStartup;
                 yield return PlayToWin(bootstrap);
                 Debug.Log("[M11] " + bootstrap.LevelId + " automated play seconds " + (Time.realtimeSinceStartup - levelStarted).ToString("0.0"));
-                Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(20 * (index + 1)));
+                Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(1000 + (20 * (index + 1))));
+                Assert.That(bootstrap.GoldHudText, Is.EqualTo((1000 + (20 * (index + 1))).ToString()));
                 Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(5));
 
                 var panel = Flow().WinPanel;
                 if (index < LevelCount - 1)
                 {
                     Assert.That(bootstrap.HasNextLevel, Is.True);
-                    Assert.That(panel.PrimaryButtonText, Is.EqualTo(WinPanelView.NextLevelText));
+                    Assert.That(panel.PrimaryButtonText, Is.EqualTo(WinPanelView.ClaimText));
+                    Assert.That(panel.ProgressText, Is.EqualTo((index + 1) + "/" + LevelCount));
                     panel.PrimaryButton.onClick.Invoke();
                     yield return WaitForTransition(bootstrap);
                 }
@@ -190,7 +205,9 @@ namespace FishPuzzle.Tests.PlayMode
             var last = Flow().WinPanel;
             Assert.That(last.HasNextLevel, Is.False);
             Assert.That(last.Subtitle, Is.EqualTo(WinPanelView.AllLevelsCompletedText));
-            Assert.That(last.PrimaryButtonText, Is.EqualTo(WinPanelView.PlayAgainText));
+            Assert.That(last.PrimaryButtonText, Is.EqualTo(WinPanelView.ClaimText));
+            Assert.That(last.ProgressText, Is.EqualTo(LevelCount + "/" + LevelCount));
+            Assert.That(last.ProgressFraction, Is.EqualTo(1f));
             Assert.That(bootstrap.RequestNextLevel(), Is.False, "Level_006 has no next level.");
             Assert.That(bootstrap.CurrentLevelIndex, Is.EqualTo(LevelCount - 1));
             Assert.That(Count<WinPanelView>(), Is.EqualTo(1));
@@ -198,7 +215,7 @@ namespace FishPuzzle.Tests.PlayMode
             last.PrimaryButton.onClick.Invoke();
             yield return WaitForTransition(bootstrap);
             AssertFreshLevel(bootstrap, Flow(), 0);
-            Assert.That(bootstrap.Progression.Progress.Score, Is.EqualTo(20 * LevelCount));
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(1000 + (20 * LevelCount)), "Play again keeps gold.");
         }
 
         [UnityTest]
@@ -305,6 +322,88 @@ namespace FishPuzzle.Tests.PlayMode
             return null;
         }
 
+        [UnityTest]
+        [Timeout(120000)]
+        public IEnumerator WinClaimDouble_ContinuesSafely_WithoutExtraGold()
+        {
+            var bootstrap = Bootstrap();
+            yield return PlayToWin(bootstrap);
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(1020));
+            Assert.That(bootstrap.GoldHudText, Is.EqualTo("1020"));
+            var panel = Flow().WinPanel;
+            panel.DoubleButton.onClick.Invoke();
+            panel.DoubleButton.onClick.Invoke();
+            panel.PrimaryButton.onClick.Invoke();
+            yield return WaitForTransition(bootstrap);
+            AssertFreshLevel(bootstrap, Flow(), 1);
+            Assert.That(bootstrap.LevelLoadCount, Is.EqualTo(1), "One continue request per win screen.");
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(1020), "Nhận x2 grants nothing extra until rewarded doubling exists.");
+            Assert.That(bootstrap.LevelLabel, Is.EqualTo("Màn 2"));
+        }
+
+        [UnityTest]
+        [Timeout(300000)]
+        public IEnumerator M121_HeartsPersist_LoseRetryLoseNext_AndHudShowsOnlyLevelGoldHearts()
+        {
+            var bootstrap = Bootstrap();
+            Assert.That(GameObject.Find("ScoreLabel"), Is.Null, "Standalone Score HUD removed.");
+            Assert.That(bootstrap.GoldHudText, Is.EqualTo("1000"));
+            Assert.That(bootstrap.LivesHudText, Is.EqualTo("5"));
+
+            Assert.That(bootstrap.DebugLoadLevel(1), Is.True);
+            yield return null;
+            yield return TapNonMatching(Flow(), 5);
+            Assert.That(Flow().State, Is.EqualTo(GameState.Lose));
+            Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(4));
+            Assert.That(bootstrap.LivesHudText, Is.EqualTo("4"));
+            Flow().PresentCurrentOutcome();
+            Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(4), "Duplicate Lose does not deduct twice.");
+
+            Flow().LosePanel.RetryButton.onClick.Invoke();
+            yield return null;
+            AssertFreshLevel(bootstrap, Flow(), 1);
+            Assert.That(bootstrap.LivesHudText, Is.EqualTo("4"), "Retry keeps hearts.");
+
+            yield return TapNonMatching(Flow(), 5);
+            Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(3));
+            Assert.That(bootstrap.LivesHudText, Is.EqualTo("3"));
+
+            Assert.That(bootstrap.DebugLoadLevel(2), Is.True);
+            yield return null;
+            AssertFreshLevel(bootstrap, Flow(), 2);
+            Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(3), "Next level keeps current hearts.");
+            Assert.That(bootstrap.LivesHudText, Is.EqualTo("3"));
+            Assert.That(bootstrap.GoldHudText, Is.EqualTo("1000"));
+            Assert.That(GameObject.Find("ScoreLabel"), Is.Null);
+
+            yield return PlayToWin(bootstrap);
+            Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(3), "Win does not restore hearts.");
+            Assert.That(bootstrap.Progression.Progress.Gold, Is.EqualTo(1020));
+            Assert.That(bootstrap.GoldHudText, Is.EqualTo("1020"));
+            Assert.That(Flow().WinPanel.RewardText, Is.EqualTo("+20"));
+            Assert.That(Flow().WinPanel.GoldText, Is.EqualTo("1020"));
+        }
+
+        [UnityTest]
+        public IEnumerator LosePanel_ClosePopsIn_AndRetryRestoresBadge()
+        {
+            var bootstrap = Bootstrap();
+            Assert.That(bootstrap.DebugLoadLevel(2), Is.True);
+            yield return null;
+            var flow = Flow();
+            yield return TapNonMatching(flow, 5);
+            Assert.That(flow.State, Is.EqualTo(GameState.Lose));
+            var lose = flow.LosePanel;
+            Assert.That(lose.HeaderText, Is.EqualTo("Màn 3"));
+            Assert.That(lose.RetryButton.GetComponentInChildren<TMPro.TextMeshProUGUI>().text, Is.EqualTo(LosePanelView.RetryText));
+            yield return new WaitForSecondsRealtime(ModalPopIn.Duration + 0.1f);
+            Assert.That(lose.Card.localScale.x, Is.GreaterThan(0.5f));
+            lose.RetryButton.onClick.Invoke();
+            yield return null;
+            Assert.That(bootstrap.LevelLabel, Is.EqualTo("Màn 3"));
+            Assert.That(bootstrap.Progression.Progress.Lives, Is.EqualTo(4));
+        }
+
         private static IEnumerator PlayToWin(LevelSceneBootstrapper bootstrap)
         {
             var flow = Flow();
@@ -335,7 +434,7 @@ namespace FishPuzzle.Tests.PlayMode
             var number = index + 1;
             Assert.That(bootstrap.CurrentLevelIndex, Is.EqualTo(index));
             Assert.That(bootstrap.LevelId, Is.EqualTo("level_00" + number));
-            Assert.That(bootstrap.LevelLabel, Is.EqualTo(number.ToString()));
+            Assert.That(bootstrap.LevelLabel, Is.EqualTo("Màn " + number));
             Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
             Assert.That(flow.IsWinPanelVisible, Is.False);
             Assert.That(flow.IsLosePanelVisible, Is.False);

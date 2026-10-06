@@ -429,7 +429,7 @@ namespace FishPuzzle.Tests.EditMode
 
             AssertFreshAttempt(next, sequence.Current);
             Assert.That(next.Progress.TotalFishRequired, Is.EqualTo(15));
-            Assert.That(progression.Progress.Score, Is.EqualTo(20));
+            Assert.That(progression.Progress.Gold, Is.EqualTo(1020), "Next level keeps the won gold.");
         }
 
         [Test]
@@ -478,12 +478,11 @@ namespace FishPuzzle.Tests.EditMode
 
             AssertFreshAttempt(second, sequence.Current);
             Assert.That(second.Tanks[2].State, Is.EqualTo(TankState.Locked), "Tank unlock scope is one level attempt.");
-            Assert.That(progress.Gold, Is.EqualTo(400));
-            Assert.That(progress.Score, Is.EqualTo(20));
+            Assert.That(progress.Gold, Is.EqualTo(420), "1000 - 600 unlock + 20 win, kept into the next level.");
         }
 
         [Test]
-        public void ScoreReward_IsAwardedExactlyOncePerWonLevel()
+        public void GoldReward_IsAwardedExactlyOncePerWonLevel()
         {
             var config = Config();
             var progression = new ProgressionRuntime(PlayerProgress.CreateDevelopmentDefaults());
@@ -493,9 +492,9 @@ namespace FishPuzzle.Tests.EditMode
             PlayToWin(session);
 
             Assert.That(session.State, Is.EqualTo(GameState.Win), Describe(session));
-            Assert.That(progression.Progress.Score, Is.EqualTo(20));
+            Assert.That(progression.Progress.Gold, Is.EqualTo(1020));
             Assert.That(progression.Settle(GameState.Win, config), Is.False);
-            Assert.That(progression.Progress.Score, Is.EqualTo(20));
+            Assert.That(progression.Progress.Gold, Is.EqualTo(1020));
         }
 
         [Test]
@@ -536,7 +535,7 @@ namespace FishPuzzle.Tests.EditMode
                 Assert.That(session.Tray.Count, Is.EqualTo(0));
                 Assert.That(session.PendingBubbleCount, Is.EqualTo(0));
                 Assert.That(session.Targets.NextUnassignedIndex, Is.EqualTo(session.Targets.Count));
-                Assert.That(progression.Progress.Score, Is.EqualTo(20 * (i + 1)));
+                Assert.That(progression.Progress.Gold, Is.EqualTo(1000 + (20 * (i + 1))));
                 Assert.That(progression.Progress.Lives, Is.EqualTo(5));
                 Assert.That(sequence.TryAdvance(), Is.EqualTo(i < 5));
             }

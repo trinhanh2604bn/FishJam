@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace FishPuzzle.Core
 {
@@ -28,8 +29,9 @@ namespace FishPuzzle.Core
         [SerializeField] private int _waitingTrayFailCount = 5;
 
         [Header("Progression")]
-        [Tooltip("Score awarded once for a level win. Locked default is 20.")]
-        [SerializeField] private int _levelCompleteScoreReward = 20;
+        [Tooltip("Gold awarded once for a level win. Locked default is 20.")]
+        [FormerlySerializedAs("_levelCompleteScoreReward")]
+        [SerializeField] private int _levelCompleteGoldReward = 20;
 
         [Tooltip("Lives removed once for a level loss. Locked default is 1.")]
         [SerializeField] private int _loseLifeCost = 1;
@@ -64,7 +66,8 @@ namespace FishPuzzle.Core
 
         public int WaitingTrayFailCount => _waitingTrayFailCount;
 
-        public int LevelCompleteScoreReward => _levelCompleteScoreReward;
+        /// <summary>Gold granted once per won attempt (M12.1: the reward currency is Gold, not Score).</summary>
+        public int LevelCompleteGoldReward => _levelCompleteGoldReward;
 
         public int LoseLifeCost => _loseLifeCost;
 
@@ -89,7 +92,7 @@ namespace FishPuzzle.Core
             ReportUnlessPositive(nameof(DistinctFishTypesPerBubble), _distinctFishTypesPerBubble);
             ReportUnlessPositive(nameof(MaxFishPerBubble), _maxFishPerBubble);
 
-            ReportIfNegative(nameof(LevelCompleteScoreReward), _levelCompleteScoreReward);
+            ReportIfNegative(nameof(LevelCompleteGoldReward), _levelCompleteGoldReward);
             ReportIfNegative(nameof(LoseLifeCost), _loseLifeCost);
             ReportIfNegative(nameof(TankUnlockGoldCost), _tankUnlockGoldCost);
 

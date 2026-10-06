@@ -155,7 +155,7 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(flow.IsLosePanelVisible, Is.True);
             var panel = Object.FindAnyObjectByType<LosePanelView>();
             Assert.That(panel, Is.Not.Null);
-            Assert.That(panel.Message, Is.EqualTo("Lose"));
+            Assert.That(panel.Message, Is.EqualTo(LosePanelView.TitleText));
             Assert.That(ignored.Outcome, Is.EqualTo(FishSelectionOutcome.Ignored));
             Assert.That(blocked.State, Is.EqualTo(FishState.Idle));
             Assert.That(flow.Session.Tray.Count, Is.EqualTo(5));

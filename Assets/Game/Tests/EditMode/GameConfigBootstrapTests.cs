@@ -39,7 +39,7 @@ namespace FishPuzzle.Tests.EditMode
             Assert.That(config.TankCapacity, Is.EqualTo(3));
             Assert.That(config.WaitingTraySlotCount, Is.EqualTo(5));
             Assert.That(config.WaitingTrayFailCount, Is.EqualTo(5));
-            Assert.That(config.LevelCompleteScoreReward, Is.EqualTo(20));
+            Assert.That(config.LevelCompleteGoldReward, Is.EqualTo(20));
             Assert.That(config.LoseLifeCost, Is.EqualTo(1));
             Assert.That(config.TankUnlockGoldCost, Is.EqualTo(600));
             Assert.That(config.DistinctFishTypesPerBubble, Is.EqualTo(3));

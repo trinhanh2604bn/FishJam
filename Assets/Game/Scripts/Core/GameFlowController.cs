@@ -35,6 +35,8 @@ namespace FishPuzzle.Core
         private Action _replayLevel;
         private Action _playAgain;
         private Func<bool> _hasNextLevel;
+        private Func<int> _levelNumber;
+        private Func<int> _levelCount;
         private LosePanelView _losePanel;
         private WinPanelView _winPanel;
         private UnlockModalView _unlockModal;
@@ -112,6 +114,13 @@ namespace FishPuzzle.Core
             _replayLevel = replayLevel;
             _playAgain = playAgain;
             _hasNextLevel = hasNextLevel;
+        }
+
+        /// <summary>Level number and sequence length for result headers and the win progress bar.</summary>
+        public void ConfigureLevelInfo(Func<int> levelNumber, Func<int> levelCount)
+        {
+            _levelNumber = levelNumber;
+            _levelCount = levelCount;
         }
 
         public void SuppressBubblePopVfx()
@@ -2204,55 +2213,77 @@ namespace FishPuzzle.Core
 
         private void ShowWin()
         {
+            // Settle first (idempotent per attempt) so the panel shows the already-updated score.
             OnAuthoritativeOutcome(GameState.Win);
             LockAllFishInput();
-            var hasNext = HasNextLevel();
-            if (_winPanel != null)
+            if (_winPanel == null)
             {
-                _winPanel.Show(ScoreReward(), hasNext);
-                return;
+                var parent = OverlayParent();
+                if (parent == null)
+                {
+                    GameLog.Error(nameof(GameFlowController), "Win was committed, but the gameplay canvas could not be found.");
+                    return;
+                }
+
+                _winPanel = WinPanelView.Create(
+                    parent,
+                    _scene.GlobalProgressDisplay.font,
+                    _art,
+                    () => _nextLevel?.Invoke(),
+                    () => _replayLevel?.Invoke(),
+                    () => _playAgain?.Invoke());
             }
 
-            if (_scene.GlobalProgressDisplay == null)
-            {
-                GameLog.Error(nameof(GameFlowController), "Win was committed, but the gameplay canvas could not be found.");
-                return;
-            }
-
-            var canvas = _scene.GlobalProgressDisplay.canvas;
-            var overlay = canvas != null ? canvas.transform.Find("OverlayRoot") : null;
-            var parent = overlay != null ? overlay : _scene.GlobalProgressDisplay.transform;
-            _winPanel = WinPanelView.Create(
-                parent,
-                _scene.GlobalProgressDisplay.font,
-                _art,
-                ScoreReward(),
-                () => _nextLevel?.Invoke(),
-                () => _replayLevel?.Invoke(),
-                () => _playAgain?.Invoke(),
-                hasNext);
+            var levelNumber = LevelNumber();
+            _winPanel.Show(
+                GoldReward(),
+                HasNextLevel(),
+                _progression != null && _progression.Progress != null ? _progression.Progress.Gold : 0,
+                levelNumber,
+                Math.Max(levelNumber, LevelCount()));
         }
 
         private void ShowLose()
         {
+            // Settle first (idempotent per attempt) so the HUD already shows the deducted heart.
             OnAuthoritativeOutcome(GameState.Lose);
             LockAllFishInput();
             if (_losePanel != null)
             {
-                _losePanel.Show(LifeCost());
+                _losePanel.Show(LifeCost(), LevelNumber());
                 return;
             }
 
-            if (_scene.GlobalProgressDisplay == null)
+            var parent = OverlayParent();
+            if (parent == null)
             {
                 GameLog.Error(nameof(GameFlowController), "Lose was committed, but the gameplay canvas could not be found.");
                 return;
             }
 
+            _losePanel = LosePanelView.Create(parent, _scene.GlobalProgressDisplay.font, _retryAttempt, _art, LifeCost(), LevelNumber());
+        }
+
+        private Transform OverlayParent()
+        {
+            if (_scene == null || _scene.GlobalProgressDisplay == null)
+            {
+                return null;
+            }
+
             var canvas = _scene.GlobalProgressDisplay.canvas;
             var overlay = canvas != null ? canvas.transform.Find("OverlayRoot") : null;
-            var parent = overlay != null ? overlay : _scene.GlobalProgressDisplay.transform;
-            _losePanel = LosePanelView.Create(parent, _scene.GlobalProgressDisplay.font, _retryAttempt, _art, LifeCost());
+            return overlay != null ? overlay : _scene.GlobalProgressDisplay.transform;
+        }
+
+        private int LevelNumber()
+        {
+            return _levelNumber != null ? Math.Max(1, _levelNumber()) : 1;
+        }
+
+        private int LevelCount()
+        {
+            return _levelCount != null ? Math.Max(1, _levelCount()) : 1;
         }
 
         private void LockAllFishInput()
@@ -2353,11 +2384,11 @@ namespace FishPuzzle.Core
             return _hasNextLevel != null && _hasNextLevel();
         }
 
-        private int ScoreReward()
+        private int GoldReward()
         {
             if (_session != null && _session.Config != null)
             {
-                return _session.Config.LevelCompleteScoreReward;
+                return _session.Config.LevelCompleteGoldReward;
             }
 
             return 20;

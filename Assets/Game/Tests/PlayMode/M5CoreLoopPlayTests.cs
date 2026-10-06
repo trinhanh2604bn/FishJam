@@ -124,7 +124,7 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(flow.IsLosePanelVisible, Is.False);
             var panel = Object.FindAnyObjectByType<WinPanelView>();
             Assert.That(panel, Is.Not.Null);
-            Assert.That(panel.Message, Is.EqualTo("Win"));
+            Assert.That(panel.Message, Is.EqualTo(WinPanelView.TitleText));
             Assert.That(Bootstrap().VisibleBubbleCount, Is.EqualTo(0));
             Assert.That(CountFishViews(), Is.EqualTo(0));
 

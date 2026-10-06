@@ -17,7 +17,7 @@ MonoBehaviour:
   _tankCapacity: 3
   _waitingTraySlotCount: 5
   _waitingTrayFailCount: 5
-  _levelCompleteScoreReward: 20
+  _levelCompleteGoldReward: 20
   _loseLifeCost: 1
   _tankUnlockGoldCost: 600
   _extraTankAdUnlockAllowed: 1
