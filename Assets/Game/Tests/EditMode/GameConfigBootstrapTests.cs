@@ -43,6 +43,7 @@ namespace FishPuzzle.Tests.EditMode
             Assert.That(config.LoseLifeCost, Is.EqualTo(1));
             Assert.That(config.TankUnlockGoldCost, Is.EqualTo(600));
             Assert.That(config.DistinctFishTypesPerBubble, Is.EqualTo(3));
+            Assert.That(config.MaxFishPerBubble, Is.EqualTo(5));
             Assert.That(config.ExtraTankAdUnlockAllowed, Is.True);
             Assert.That(config.OutOfSpaceRescueEnabled, Is.False);
             Assert.That(config.FailTimerEnabled, Is.False);

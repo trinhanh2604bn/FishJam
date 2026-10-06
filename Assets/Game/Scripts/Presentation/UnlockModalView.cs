@@ -6,7 +6,7 @@ using UnityEngine.UI;
 namespace FishPuzzle.Presentation
 {
     /// <summary>
-    /// Minimal extra-tank unlock modal. Buttons report choices. They do not change gold or tank state.
+    /// Extra-tank unlock modal. Buttons report choices. They do not change gold or tank state.
     /// </summary>
     public sealed class UnlockModalView : MonoBehaviour
     {
@@ -14,6 +14,7 @@ namespace FishPuzzle.Presentation
         [SerializeField] private Button _goldButton;
         [SerializeField] private Button _rewardButton;
         [SerializeField] private Button _closeButton;
+        [SerializeField] private RectTransform _card;
 
         private Action _onGold;
         private Action _onReward;
@@ -35,47 +36,86 @@ namespace FishPuzzle.Presentation
             Sprite coinIcon,
             Action onGold,
             Action onReward,
-            Action onClose)
+            Action onClose,
+            GameplayArtCatalog art = null)
         {
-            var root = new GameObject("UnlockModal", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            root.transform.SetParent(parent, false);
-            Stretch(root.GetComponent<RectTransform>());
-            var dim = root.GetComponent<Image>();
-            dim.color = new Color(0.03f, 0.05f, 0.09f, 0.82f);
-            dim.raycastTarget = true;
+            var panel = art != null ? art.ModalPanel : null;
+            var header = art != null ? art.ModalHeader : null;
+            var green = art != null ? art.ButtonGreenLarge : null;
+            var blue = art != null ? art.ButtonBlueLarge : null;
+            var closeFace = art != null ? art.ButtonClose : null;
+            var closeIcon = art != null ? art.CloseIcon : null;
+            var adIcon = art != null ? art.RewardedAdIcon : null;
+            var tank = art != null ? art.TankBack : null;
+            if (coinIcon == null && art != null)
+            {
+                coinIcon = art.CoinIcon;
+            }
 
-            var cardObject = new GameObject("Card", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            cardObject.transform.SetParent(root.transform, false);
-            var card = cardObject.GetComponent<RectTransform>();
-            card.anchorMin = new Vector2(0.5f, 0.5f);
-            card.anchorMax = new Vector2(0.5f, 0.5f);
-            card.pivot = new Vector2(0.5f, 0.5f);
-            card.sizeDelta = new Vector2(760f, 720f);
-            cardObject.GetComponent<Image>().color = new Color(0.12f, 0.2f, 0.28f, 0.98f);
-            cardObject.GetComponent<Image>().raycastTarget = true;
+            var dim = ModalChrome.CreateDim(parent, "UnlockModal");
+            var card = ModalChrome.CreateCard(dim.transform, panel);
+            var close = ModalChrome.CreateButton(
+                card,
+                "CloseButton",
+                string.Empty,
+                font,
+                new Vector2(292f, 400f),
+                new Vector2(88f, 88f),
+                closeFace,
+                new Color(0.85f, 0.18f, 0.16f, 1f),
+                Color.white,
+                closeIcon);
+            var closeMark = close.transform.Find("Icon") as RectTransform;
+            if (closeMark != null)
+            {
+                closeMark.anchoredPosition = Vector2.zero;
+                closeMark.sizeDelta = new Vector2(36f, 36f);
+            }
+            ModalChrome.CreateSprite(card, "Header", header, new Vector2(0f, 300f), new Vector2(480f, 133f), false);
+            ModalChrome.CreateLabel(card, "Title", "Unlock Tank", font, 48f, new Vector2(0f, 300f), new Vector2(380f, 80f), Color.white);
+            if (tank != null)
+            {
+                ModalChrome.CreateSprite(card, "TankPreview", tank, new Vector2(0f, 145f), new Vector2(140f, 140f), false);
+            }
 
-            var title = CreateLabel(card, "Title", "Unlock Tank", font, 64f, new Vector2(0f, 250f), new Vector2(640f, 90f));
-            title.alignment = TextAlignmentOptions.Center;
+            var textColor = new Color(0.05f, 0.16f, 0.28f, 1f);
+            var gold = ModalChrome.CreateButton(
+                card,
+                "GoldButton",
+                "600 Gold",
+                font,
+                new Vector2(0f, -55f),
+                new Vector2(468f, 161f),
+                green,
+                new Color(0.95f, 0.72f, 0.2f, 1f),
+                textColor,
+                coinIcon);
+            var reward = ModalChrome.CreateButton(
+                card,
+                "RewardButton",
+                "Free",
+                font,
+                new Vector2(0f, -245f),
+                new Vector2(468f, 166f),
+                blue,
+                new Color(0.25f, 0.62f, 0.92f, 1f),
+                textColor,
+                adIcon);
+            var status = ModalChrome.CreateLabel(card, "Status", string.Empty, font, 32f, new Vector2(0f, -400f), new Vector2(520f, 64f), new Color(0.55f, 0.08f, 0.1f, 1f));
 
-            var gold = CreateButton(card, "GoldButton", "600 Gold", font, new Vector2(0f, 80f), new Color(0.95f, 0.72f, 0.2f, 1f), coinIcon);
-            var reward = CreateButton(card, "RewardButton", "Free", font, new Vector2(0f, -70f), new Color(0.25f, 0.72f, 0.42f, 1f), null);
-            var close = CreateButton(card, "CloseButton", "Close", font, new Vector2(0f, -230f), new Color(0.35f, 0.4f, 0.48f, 1f), null);
-            var status = CreateLabel(card, "Status", string.Empty, font, 36f, new Vector2(0f, -340f), new Vector2(640f, 70f));
-            status.alignment = TextAlignmentOptions.Center;
-            status.color = new Color(1f, 0.55f, 0.45f, 1f);
-
-            var view = root.AddComponent<UnlockModalView>();
+            var view = dim.gameObject.AddComponent<UnlockModalView>();
             view._status = status;
             view._goldButton = gold;
             view._rewardButton = reward;
             view._closeButton = close;
+            view._card = card;
             view._onGold = onGold;
             view._onReward = onReward;
             view._onClose = onClose;
             gold.onClick.AddListener(view.HandleGold);
             reward.onClick.AddListener(view.HandleReward);
             close.onClick.AddListener(view.HandleClose);
-            root.SetActive(false);
+            dim.gameObject.SetActive(false);
             return view;
         }
 
@@ -97,6 +137,7 @@ namespace FishPuzzle.Presentation
 
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
+            ModalChrome.Fit(_card);
         }
 
         public void ShowInsufficientGold()
@@ -108,6 +149,7 @@ namespace FishPuzzle.Presentation
 
             gameObject.SetActive(true);
             transform.SetAsLastSibling();
+            ModalChrome.Fit(_card);
         }
 
         public void Hide()
@@ -117,97 +159,26 @@ namespace FishPuzzle.Presentation
 
         private void HandleGold()
         {
-            _onGold?.Invoke();
+            if (_onGold != null)
+            {
+                _onGold();
+            }
         }
 
         private void HandleReward()
         {
-            _onReward?.Invoke();
+            if (_onReward != null)
+            {
+                _onReward();
+            }
         }
 
         private void HandleClose()
         {
-            _onClose?.Invoke();
-        }
-
-        private static void Stretch(RectTransform rect)
-        {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
-        }
-
-        private static TextMeshProUGUI CreateLabel(
-            Transform parent,
-            string name,
-            string text,
-            TMP_FontAsset font,
-            float fontSize,
-            Vector2 position,
-            Vector2 size)
-        {
-            var labelObject = new GameObject(name, typeof(RectTransform));
-            labelObject.SetActive(false);
-            labelObject.transform.SetParent(parent, false);
-            var rect = labelObject.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 0.5f);
-            rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = position;
-            rect.sizeDelta = size;
-            var label = labelObject.AddComponent<TextMeshProUGUI>();
-            label.font = font;
-            label.text = text;
-            label.fontSize = fontSize;
-            label.alignment = TextAlignmentOptions.Center;
-            label.color = Color.white;
-            label.raycastTarget = false;
-            labelObject.SetActive(true);
-            return label;
-        }
-
-        private static Button CreateButton(
-            Transform parent,
-            string name,
-            string text,
-            TMP_FontAsset font,
-            Vector2 position,
-            Color color,
-            Sprite icon)
-        {
-            var buttonObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-            buttonObject.transform.SetParent(parent, false);
-            var rect = buttonObject.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 0.5f);
-            rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = position;
-            rect.sizeDelta = new Vector2(520f, 120f);
-            var image = buttonObject.GetComponent<Image>();
-            image.color = color;
-            image.raycastTarget = true;
-            var button = buttonObject.GetComponent<Button>();
-            button.targetGraphic = image;
-
-            if (icon != null)
+            if (_onClose != null)
             {
-                var iconObject = new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                iconObject.transform.SetParent(buttonObject.transform, false);
-                var iconRect = iconObject.GetComponent<RectTransform>();
-                iconRect.anchorMin = new Vector2(0f, 0.5f);
-                iconRect.anchorMax = new Vector2(0f, 0.5f);
-                iconRect.pivot = new Vector2(0.5f, 0.5f);
-                iconRect.anchoredPosition = new Vector2(70f, 0f);
-                iconRect.sizeDelta = new Vector2(72f, 72f);
-                var iconImage = iconObject.GetComponent<Image>();
-                iconImage.sprite = icon;
-                iconImage.preserveAspect = true;
-                iconImage.raycastTarget = false;
+                _onClose();
             }
-
-            CreateLabel(buttonObject.transform, "Label", text, font, 42f, icon != null ? new Vector2(28f, 0f) : Vector2.zero, new Vector2(360f, 80f));
-            return button;
         }
     }
 }

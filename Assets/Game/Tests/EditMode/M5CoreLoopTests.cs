@@ -10,7 +10,7 @@ namespace FishPuzzle.Tests.EditMode
 {
     public sealed class M5CoreLoopTests
     {
-        private const string LevelPath = "Assets/Game/Data/Levels/Level_001.asset";
+        private const string LevelPath = "Assets/Game/Tests/Fixtures/LegacyLevel_036.asset";
         private const string ConfigPath = "Assets/Game/Data/Config/GameConfig.asset";
         private const string LayoutPath = "Assets/Game/Data/BubblePileLayouts/BPL_Standard_10.asset";
 

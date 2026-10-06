@@ -49,6 +49,12 @@ namespace FishPuzzle.Presentation
             return clamped * clamped;
         }
 
+        public static float Hop(float t)
+        {
+            var clamped = Mathf.Clamp01(t);
+            return clamped * clamped * (3f - (2f * clamped));
+        }
+
         public static float PopScale(float t)
         {
             var clamped = Mathf.Clamp01(t);

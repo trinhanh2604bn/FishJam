@@ -327,7 +327,7 @@ namespace FishPuzzle.Presentation
 
             const float contentHalfX = 310f;
             const float contentHalfY = 330f;
-            const float edgePadding = 128f;
+            const float edgePadding = 176f;
             var scaleX = Mathf.Max(80f, (area.width * 0.5f) - edgePadding) / contentHalfX;
             var scaleY = Mathf.Max(80f, (area.height * 0.5f) - edgePadding) / contentHalfY;
             return new Vector2(authored.x * scaleX, authored.y * scaleY);
@@ -344,7 +344,7 @@ namespace FishPuzzle.Presentation
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = new Vector2(336f, 336f);
+            rect.sizeDelta = new Vector2(300f, 300f);
             rect.localScale = Vector3.one;
         }
 

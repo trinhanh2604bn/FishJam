@@ -47,12 +47,16 @@ EXTRA_TANK_AD_UNLOCK_ALLOWED    = true
 FAIL_TIMER                      = NONE
 
 DISTINCT_FISH_TYPES_PER_BUBBLE  = 3
+MAX_FISH_PER_BUBBLE             = 5
+FISH_VISUAL_SIZE                = 124 x 124 (fixed)
 ```
 
 Important:
 
 - A waiting tray count of **5 means immediate level failure** in our current build.
 - Do not rescue the player after the fifth waiting fish is committed.
+- A bubble never contains more than **5 fish** (`GameConfig.MaxFishPerBubble`). Later levels get harder by adding bubbles, total fish, FishTypes and varied bubble compositions, not by exceeding 5 fish per bubble.
+- Fish keep one fixed visual size (124 x 124) in bubbles, in flight and in tanks. Fish are never resized by bubble occupancy, reflow or level.
 - The reference contains an “Out of Space” rescue offer, but that system is **disabled for the current product rule** unless explicitly enabled later.
 
 ---
@@ -994,6 +998,9 @@ Every standard bubble contains fish from exactly:
 
 This does **not** mean exactly 3 total fish.
 
+A bubble holds at most **5 fish** (`MAX_FISH_PER_BUBBLE`).
+Preferred patterns: 3 fish = 1+1+1, 4 fish = 2+1+1, 5 fish = 2+2+1 or 3+1+1.
+
 Examples:
 
 Valid:
@@ -1004,9 +1011,9 @@ Orange
 Green
 Pink
 Green
-Orange
 
 Distinct = Orange, Green, Pink = 3
+Total = 5 (maximum)
 ```
 
 Invalid:
@@ -1074,8 +1081,18 @@ Example:
 3 fish  → triangle
 4 fish  → 2x2-ish
 5 fish  → packed pentagon
-6 fish  → packed formation
 ```
+
+There is no 6-fish formation (maximum 5 fish per bubble).
+
+Fish size is fixed at 124 x 124. The layout controls POSITION only:
+- never shrink fish because a bubble holds more fish,
+- never resize remaining fish when one leaves (reflow moves positions only),
+- spread positions instead; small overlap and slight overflow past the rim are allowed,
+- no Mask / RectMask2D clipping. Order stays BubbleBack → Fish → BubbleFront.
+
+Inside a tank, fish keep the same 124 size and overlap with small offsets
+(1: center, 2: (-28,4)/(28,-4), 3: (-40,7)/(0,-6)/(40,7)); later fish draw in front.
 
 These layouts affect presentation only.
 
@@ -1429,6 +1446,7 @@ Standard validator requires:
 
 ```text
 Distinct FishTypes == 3
+1 <= fishes.Count <= MAX_FISH_PER_BUBBLE (5)
 ```
 
 ---
@@ -1508,6 +1526,7 @@ For every standard bubble:
 
 ```text
 fishes.Count > 0
+fishes.Count <= MAX_FISH_PER_BUBBLE (5)
 DistinctFishTypes == 3
 ```
 

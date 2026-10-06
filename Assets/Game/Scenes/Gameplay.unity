@@ -737,7 +737,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
   m_AnchoredPosition: {x: 0, y: -260}
-  m_SizeDelta: {x: 940, y: 460}
+  m_SizeDelta: {x: 1000, y: 460}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &800405349
 MonoBehaviour:
@@ -752,7 +752,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: FishPuzzle.Runtime::FishPuzzle.Presentation.TankBoardView
   _slotRoot: {fileID: 1273819010}
-  _horizontalSpacing: 230
+  _horizontalSpacing: 246
 --- !u!1 &943350630
 GameObject:
   m_ObjectHideFlags: 0
@@ -970,6 +970,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8a42ad9362fb57346994366fbf78b314, type: 3}
   m_Name: 
   m_EditorClassIdentifier: FishPuzzle.Runtime::FishPuzzle.Presentation.LevelSceneBootstrapper
+  _catalog: {fileID: 11400000, guid: d5aca9751a2e4489aaa801090b372ff9, type: 2}
+  _startLevelIndex: 0
   _level: {fileID: 11400000, guid: 585b9bafa3698b544955a2d5c48408c0, type: 2}
   _config: {fileID: 11400000, guid: ce7f1b3d5a9c4f8d0b4e6c2a8f9d1b5b, type: 2}
   _fishCatalog: {fileID: 11400000, guid: b0ead4e566537884ea141eb118a77d92, type: 2}
@@ -982,6 +984,8 @@ MonoBehaviour:
   _fishPrefab: {fileID: 5301753334802547005, guid: 536f2ab230de5994f956f494229983f9, type: 3}
   _previewGoldDisplay: 0
   _previewLivesDisplay: 5
+  _transitionFadeSeconds: 0.25
+  _levelBannerSeconds: 1.1
   _inspectedLevelId: 
   _inspectedVisibleBubbles: 0
   _inspectedPendingBubbles: 0
@@ -1351,8 +1355,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 32, y: -629}
-  m_SizeDelta: {x: 156, y: 138}
+  m_AnchoredPosition: {x: 32, y: -666}
+  m_SizeDelta: {x: 156, y: 180}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &1516880906
 MonoBehaviour:
@@ -1595,8 +1599,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -16}
-  m_SizeDelta: {x: 140, y: 58}
+  m_AnchoredPosition: {x: -2, y: -11}
+  m_SizeDelta: {x: 108, y: 48}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1639388344
 MonoBehaviour:
@@ -1645,8 +1649,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 32
-  m_fontSizeBase: 32
+  m_fontSize: 28
+  m_fontSizeBase: 28
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -1897,7 +1901,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3887884010948171605, guid: f2e76f083feb500409044998b156f572, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -629
+      value: -666
       objectReference: {fileID: 0}
     - target: {fileID: 3887884010948171605, guid: f2e76f083feb500409044998b156f572, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -2082,8 +2086,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -118}
-  m_SizeDelta: {x: 930, y: 48}
+  m_AnchoredPosition: {x: 0, y: -87}
+  m_SizeDelta: {x: 980, y: 88}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1996394416
 MonoBehaviour:

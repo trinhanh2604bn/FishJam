@@ -11,7 +11,7 @@ namespace FishPuzzle.Presentation
     public sealed class TankBoardView : MonoBehaviour
     {
         [SerializeField] private RectTransform _slotRoot;
-        [SerializeField] private float _horizontalSpacing = 230f;
+        [SerializeField] private float _horizontalSpacing = 246f;
 
         private readonly List<TankSlotView> _slots = new List<TankSlotView>();
         private GameObject _badgePrefab;
@@ -51,7 +51,10 @@ namespace FishPuzzle.Presentation
             }
 
             _badgePrefab = badgePrefab;
-            var origin = -((slotCount - 1) * _horizontalSpacing) * 0.5f;
+            var spacing = _horizontalSpacing;
+            var tankWidth = 232f;
+            FitShelf(slotCount, ref spacing, ref tankWidth);
+            var origin = -((slotCount - 1) * spacing) * 0.5f;
             for (var i = 0; i < slotCount; i++)
             {
                 var instance = Instantiate(tankPrefab, _slotRoot);
@@ -60,8 +63,8 @@ namespace FishPuzzle.Presentation
                 rect.anchorMin = new Vector2(0.5f, 0.5f);
                 rect.anchorMax = new Vector2(0.5f, 0.5f);
                 rect.pivot = new Vector2(0.5f, 0.5f);
-                rect.anchoredPosition = new Vector2(origin + (i * _horizontalSpacing), 0f);
-                rect.sizeDelta = new Vector2(208f, 176f);
+                rect.anchoredPosition = new Vector2(origin + (i * spacing), 0f);
+                rect.sizeDelta = new Vector2(tankWidth, 196f);
 
                 var slot = instance.GetComponent<TankSlotView>();
                 if (slot == null)
@@ -101,6 +104,42 @@ namespace FishPuzzle.Presentation
             }
 
             return CreateBadge(slot);
+        }
+
+        private void FitShelf(int slotCount, ref float spacing, ref float tankWidth)
+        {
+            var board = transform as RectTransform;
+            var safe = transform.parent as RectTransform;
+            if (board == null || safe == null || slotCount <= 1)
+            {
+                return;
+            }
+
+            var safeWidth = safe.rect.width;
+            if (safeWidth < 200f)
+            {
+                return;
+            }
+
+            var available = safeWidth - 36f;
+            if (board.sizeDelta.x > available)
+            {
+                var size = board.sizeDelta;
+                size.x = available;
+                board.sizeDelta = size;
+            }
+
+            var width = board.sizeDelta.x > 1f ? board.sizeDelta.x : safeWidth;
+            var fitted = (width - 16f) / slotCount;
+            if (fitted < tankWidth)
+            {
+                tankWidth = Mathf.Max(168f, fitted);
+                spacing = tankWidth;
+                return;
+            }
+
+            var maxSpacing = (width - tankWidth) / (slotCount - 1);
+            spacing = Mathf.Min(spacing, maxSpacing);
         }
 
         private TargetBadgeView CreateBadge(TankSlotView slot)

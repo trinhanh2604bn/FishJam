@@ -44,6 +44,17 @@ namespace FishPuzzle.Presentation
         [SerializeField] private Sprite _touchRipple;
         [SerializeField] private Sprite _tankSplash;
         [SerializeField] private Sprite _splashDroplet;
+        [SerializeField] private Sprite _modalPanel;
+        [SerializeField] private Sprite _modalHeader;
+        [SerializeField] private Sprite _modalInner;
+        [SerializeField] private Sprite _buttonGreenLarge;
+        [SerializeField] private Sprite _buttonBlueLarge;
+        [SerializeField] private Sprite _buttonClose;
+        [SerializeField] private Sprite _closeIcon;
+        [SerializeField] private Sprite _rewardedAdIcon;
+        [SerializeField] private Sprite _successBurst;
+        [SerializeField] private Sprite _coinSparkle;
+        [SerializeField] private Sprite _failFlash;
 
         public Sprite GameplayBackground => _gameplayBackground;
         public Sprite BubbleBack => _bubbleBack;
@@ -76,6 +87,17 @@ namespace FishPuzzle.Presentation
         public Sprite TouchRipple => _touchRipple;
         public Sprite TankSplash => _tankSplash;
         public Sprite SplashDroplet => _splashDroplet;
+        public Sprite ModalPanel => _modalPanel;
+        public Sprite ModalHeader => _modalHeader;
+        public Sprite ModalInner => _modalInner;
+        public Sprite ButtonGreenLarge => _buttonGreenLarge;
+        public Sprite ButtonBlueLarge => _buttonBlueLarge;
+        public Sprite ButtonClose => _buttonClose;
+        public Sprite CloseIcon => _closeIcon;
+        public Sprite RewardedAdIcon => _rewardedAdIcon;
+        public Sprite SuccessBurst => _successBurst;
+        public Sprite CoinSparkle => _coinSparkle;
+        public Sprite FailFlash => _failFlash;
 
         public List<string> GetMissingRequiredReferences()
         {
@@ -154,7 +176,18 @@ namespace FishPuzzle.Presentation
                 || _snowflakeIcon != null
                 || _touchRipple != null
                 || _tankSplash != null
-                || _splashDroplet != null;
+                || _splashDroplet != null
+                || _modalPanel != null
+                || _modalHeader != null
+                || _modalInner != null
+                || _buttonGreenLarge != null
+                || _buttonBlueLarge != null
+                || _buttonClose != null
+                || _closeIcon != null
+                || _rewardedAdIcon != null
+                || _successBurst != null
+                || _coinSparkle != null
+                || _failFlash != null;
         }
 
         private static void AddIfMissing(List<string> missing, Sprite sprite, string name)

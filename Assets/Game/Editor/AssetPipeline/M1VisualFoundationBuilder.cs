@@ -126,6 +126,17 @@ namespace FishPuzzle.AssetPipeline
             serialized.FindProperty("_waitingTrayShelf").objectReferenceValue = null;
             Assign(serialized, "_winBackground", "Assets/Game/Art/Backgrounds/bg_win_underwater.png");
             Assign(serialized, "_snowflakeIcon", "Assets/Game/Art/Bubbles/icon_snowflake.png");
+            Assign(serialized, "_modalPanel", "Assets/Game/Art/UI/Common/modal_main_blue.png");
+            Assign(serialized, "_modalHeader", "Assets/Game/Art/UI/Common/modal_header_blue.png");
+            Assign(serialized, "_modalInner", "Assets/Game/Art/UI/Common/modal_inner_cream.png");
+            Assign(serialized, "_buttonGreenLarge", "Assets/Game/Art/UI/Common/button_green_large.png");
+            Assign(serialized, "_buttonBlueLarge", "Assets/Game/Art/UI/Common/button_blue_large.png");
+            Assign(serialized, "_buttonClose", "Assets/Game/Art/UI/Common/button_close_red.png");
+            Assign(serialized, "_closeIcon", "Assets/Game/Art/UI/Common/icon_x_white.png");
+            Assign(serialized, "_rewardedAdIcon", "Assets/Game/Art/UI/Unlock/icon_rewarded_ad.png");
+            Assign(serialized, "_successBurst", "Assets/Game/Art/VFX/vfx_success_burst.png");
+            Assign(serialized, "_coinSparkle", "Assets/Game/Art/VFX/vfx_coin_sparkle.png");
+            Assign(serialized, "_failFlash", "Assets/Game/Art/VFX/vfx_fail_flash.png");
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(catalog);
             var missing = catalog.GetMissingRequiredReferences();

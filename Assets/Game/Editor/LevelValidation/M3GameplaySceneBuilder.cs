@@ -25,6 +25,7 @@ namespace FishPuzzle.EditorTools
         public const string ScenePath = "Assets/Game/Scenes/Gameplay.unity";
         private const string PreviewScenePath = "Assets/Game/Scenes/Dev/M1_AssetPreview.unity";
         private const string LevelPath = "Assets/Game/Data/Levels/Level_001.asset";
+        private const string LevelCatalogPath = "Assets/Game/Data/Config/LevelCatalog.asset";
         private const string ConfigPath = "Assets/Game/Data/Config/GameConfig.asset";
         private const string FishCatalogPath = "Assets/Game/Data/Config/FishVisualCatalog.asset";
         private const string ArtCatalogPath = "Assets/Game/Data/Config/GameplayArtCatalog.asset";
@@ -260,28 +261,28 @@ namespace FishPuzzle.EditorTools
             var livesLabel = CreateLabel(livesPanel.transform, "LivesLabel", "5", font, new Vector2(0f, -6f), new Vector2(70f, 46f), 30f, Color.white);
 
             var tankBoardObject = CreateRect("TankBoard", safeAreaObject);
-            Place(tankBoardObject, new Vector2(0f, -260f), new Vector2(940f, 460f));
+            Place(tankBoardObject, new Vector2(0f, -260f), new Vector2(1000f, 460f));
             SetAnchor(tankBoardObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
             var tankBoard = tankBoardObject.gameObject.AddComponent<TankBoardView>();
             var shelf = CreateImage("Shelf", tankBoardObject, art.TankShelf, false);
-            Place(shelf.rectTransform, new Vector2(0f, -118f), new Vector2(930f, 48f));
+            Place(shelf.rectTransform, new Vector2(0f, -87f), new Vector2(980f, 88f));
             var tankSlots = CreateRect("Slots", tankBoardObject);
             Stretch(tankSlots);
             var tankSerialized = new SerializedObject(tankBoard);
             tankSerialized.FindProperty("_slotRoot").objectReferenceValue = tankSlots;
-            tankSerialized.FindProperty("_horizontalSpacing").floatValue = 230f;
+            tankSerialized.FindProperty("_horizontalSpacing").floatValue = 246f;
             tankSerialized.ApplyModifiedPropertiesWithoutUndo();
 
             var progressObject = CreateImage("GlobalProgress", safeAreaObject, art.GlobalProgressPanel, true);
-            Place(progressObject.rectTransform, new Vector2(32f, -629f), new Vector2(156f, 138f));
+            Place(progressObject.rectTransform, new Vector2(32f, -666f), new Vector2(156f, 180f));
             SetAnchor(progressObject.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f));
             progressObject.rectTransform.pivot = new Vector2(0f, 0.5f);
-            var progressLabel = CreateLabel(progressObject.transform, "ProgressLabel", "0 / 36", font, new Vector2(0f, -16f), new Vector2(140f, 58f), 32f, new Color(0.08f, 0.25f, 0.45f, 1f));
+            var progressLabel = CreateLabel(progressObject.transform, "ProgressLabel", "0 / 36", font, new Vector2(-2f, -11f), new Vector2(108f, 48f), 28f, new Color(0.08f, 0.25f, 0.45f, 1f));
 
             var trayObject = (GameObject)PrefabUtility.InstantiatePrefab(trayPrefab, safeAreaObject);
             trayObject.name = "WaitingTray";
             var trayRect = trayObject.GetComponent<RectTransform>();
-            Place(trayRect, new Vector2(540f, -629f), new Vector2(660f, 124f));
+            Place(trayRect, new Vector2(540f, -666f), new Vector2(660f, 124f));
             SetAnchor(trayRect, new Vector2(0f, 1f), new Vector2(0f, 1f));
             var waitingTray = trayObject.GetComponent<WaitingTrayView>();
 
@@ -328,6 +329,8 @@ namespace FishPuzzle.EditorTools
 
             var bootstrapSerialized = new SerializedObject(bootstrap);
             bootstrapSerialized.FindProperty("_level").objectReferenceValue = level;
+            bootstrapSerialized.FindProperty("_catalog").objectReferenceValue = Load<LevelCatalog>(LevelCatalogPath);
+            bootstrapSerialized.FindProperty("_startLevelIndex").intValue = 0;
             bootstrapSerialized.FindProperty("_config").objectReferenceValue = config;
             bootstrapSerialized.FindProperty("_fishCatalog").objectReferenceValue = fishCatalog;
             bootstrapSerialized.FindProperty("_artCatalog").objectReferenceValue = art;
@@ -374,9 +377,22 @@ namespace FishPuzzle.EditorTools
             valid &= Require(report, bootstrap.TankSlotCount == 4, "Preview tank count " + bootstrap.TankSlotCount);
             valid &= Require(report, bootstrap.UnlockedTankCount == 2, "Preview unlocked tanks " + bootstrap.UnlockedTankCount);
             valid &= Require(report, bootstrap.WaitingTraySlotCount == 5, "Preview tray slots " + bootstrap.WaitingTraySlotCount);
-            valid &= Require(report, bootstrap.VisibleBubbleCount == 10, "Preview visible bubbles " + bootstrap.VisibleBubbleCount);
-            valid &= Require(report, bootstrap.PendingBubbleCount == 2, "Preview pending bubbles " + bootstrap.PendingBubbleCount);
-            valid &= Require(report, bootstrap.GlobalProgressLabel == "0 / 36", "Preview progress " + bootstrap.GlobalProgressLabel);
+            var previewLevel = bootstrap.Level;
+            var slotCount = previewLevel != null && previewLevel.PileLayout != null ? previewLevel.PileLayout.Slots.Count : 0;
+            var queueCount = previewLevel != null ? previewLevel.BubbleQueue.Count : 0;
+            var expectedVisible = Math.Min(queueCount, slotCount);
+            var expectedFish = 0;
+            for (var i = 0; i < expectedVisible; i++)
+            {
+                expectedFish += previewLevel.BubbleQueue[i].Fishes.Count;
+            }
+
+            valid &= Require(report, bootstrap.VisibleBubbleCount == expectedVisible, "Preview visible bubbles " + bootstrap.VisibleBubbleCount);
+            valid &= Require(report, bootstrap.PendingBubbleCount == queueCount - expectedVisible, "Preview pending bubbles " + bootstrap.PendingBubbleCount);
+            valid &= Require(
+                report,
+                previewLevel != null && bootstrap.GlobalProgressLabel == "0 / " + previewLevel.TotalFishRequired,
+                "Preview progress " + bootstrap.GlobalProgressLabel);
 
             var missingScripts = CountMissingScripts();
             var missingSprites = CountMissingRequiredSprites();
@@ -398,7 +414,7 @@ namespace FishPuzzle.EditorTools
 
             valid &= Require(report, missingScripts == 0, "Missing scripts " + missingScripts);
             valid &= Require(report, missingSprites == 0, "Missing required sprites " + missingSprites);
-            valid &= Require(report, fish.Length == 30, "Visible fish " + fish.Length);
+            valid &= Require(report, fish.Length == expectedFish, "Visible fish " + fish.Length + " expected " + expectedFish);
             valid &= Require(report, fishWithoutSprites == 0, "Fish without sprites " + fishWithoutSprites);
             valid &= Require(report, fishOutsideContainer == 0, "Fish outside FishContainer " + fishOutsideContainer);
             valid &= Require(report, FrontCoversFish(), "BubbleFront draws after FishContainer");

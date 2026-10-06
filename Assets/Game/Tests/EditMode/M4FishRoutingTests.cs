@@ -9,7 +9,7 @@ namespace FishPuzzle.Tests.EditMode
 {
     public sealed class M4FishRoutingTests
     {
-        private const string LevelPath = "Assets/Game/Data/Levels/Level_001.asset";
+        private const string LevelPath = "Assets/Game/Tests/Fixtures/LegacyLevel_036.asset";
         private const string ConfigPath = "Assets/Game/Data/Config/GameConfig.asset";
 
         private int _seedId = 8000;

@@ -9,10 +9,13 @@ namespace FishPuzzle.Presentation
     {
         private static Sprite _ring;
         private static Sprite _dot;
+        private static Sprite _droplet;
 
         public static Sprite Ring => _ring != null ? _ring : (_ring = Create(false));
 
         public static Sprite Dot => _dot != null ? _dot : (_dot = Create(true));
+
+        public static Sprite Droplet => _droplet != null ? _droplet : (_droplet = CreateDroplet());
 
         private static Sprite Create(bool filled)
         {
@@ -39,6 +42,51 @@ namespace FishPuzzle.Presentation
             texture.SetPixels(pixels);
             texture.Apply(false, false);
             var sprite = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
+            sprite.hideFlags = HideFlags.HideAndDontSave;
+            return sprite;
+        }
+
+        private static Sprite CreateDroplet()
+        {
+            const int width = 48;
+            const int height = 72;
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            var pixels = new Color[width * height];
+            var center = (width - 1) * 0.5f;
+            for (var y = 0; y < height; y++)
+            {
+                var ny = y / (float)(height - 1);
+                const float bodyCenter = 0.34f;
+                const float bodyRadius = 0.34f;
+                var dy = (ny - bodyCenter) / bodyRadius;
+                var half = 0f;
+                if ((dy * dy) <= 1f)
+                {
+                    half = 0.48f * Mathf.Sqrt(1f - (dy * dy));
+                }
+
+                if (ny > bodyCenter)
+                {
+                    var taper = Mathf.Lerp(0.48f, 0f, Mathf.InverseLerp(bodyCenter, 1f, ny));
+                    half = (dy * dy) <= 1f ? Mathf.Min(half, taper) : taper;
+                }
+                for (var x = 0; x < width; x++)
+                {
+                    var nx = (x - center) / center;
+                    var edge = half <= 0.001f ? 1f : Mathf.Abs(nx) / half;
+                    var alpha = Mathf.Clamp01(1f - Mathf.InverseLerp(0.72f, 1f, edge));
+                    var highlight = Mathf.Clamp01(1f - (Mathf.Abs(nx + 0.12f) * 3.2f) - (Mathf.Abs(ny - 0.34f) * 4f));
+                    var color = Color.Lerp(new Color(0.35f, 0.82f, 1f, 1f), Color.white, highlight * 0.85f);
+                    color.a = alpha * Mathf.Lerp(0.92f, 0.55f, ny);
+                    pixels[(y * width) + x] = color;
+                }
+            }
+
+            texture.SetPixels(pixels);
+            texture.Apply(false, false);
+            var sprite = Sprite.Create(texture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0.42f), width);
             sprite.hideFlags = HideFlags.HideAndDontSave;
             return sprite;
         }

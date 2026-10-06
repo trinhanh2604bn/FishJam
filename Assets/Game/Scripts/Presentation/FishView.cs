@@ -10,7 +10,7 @@ namespace FishPuzzle.Presentation
     /// <summary>
     /// Displays one fish sprite. A press is visual only. Release asks the flow to route once.
     /// </summary>
-    public sealed class FishView : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler
+    public sealed class FishView : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IPointerClickHandler, ICancelHandler
     {
         [SerializeField] private Image _visual;
         [SerializeField] private FishVisualCatalog _catalog;
@@ -20,6 +20,8 @@ namespace FishPuzzle.Presentation
         private Action<FishView> _onCommit;
         private Action<FishView> _onCancel;
         private FishPressFeedback _pressFeedback;
+        private FishIdleSway _idleSway;
+        private AnimationTuning _tuning;
         private Rect _pressScreenRect;
         private Vector2 _pressScreenPosition;
         private bool _gestureActive;
@@ -37,6 +39,12 @@ namespace FishPuzzle.Presentation
         public float PressScale => _pressFeedback != null ? _pressFeedback.Scale : 1f;
 
         public float PressAngle => _pressFeedback != null ? _pressFeedback.Angle : 0f;
+
+        public void SetPresentationTuning(AnimationTuning tuning)
+        {
+            _tuning = tuning;
+            PlayIdle();
+        }
 
         public void BindInteraction(int fishId, Func<FishView, bool> tryBeginPress, Action<FishView> onCommit, Action<FishView> onCancel)
         {
@@ -67,7 +75,13 @@ namespace FishPuzzle.Presentation
 
         public void BeginPress(AnimationTuning tuning)
         {
-            Press().Begin(PressRect(), tuning);
+            if (tuning != null)
+            {
+                _tuning = tuning;
+            }
+
+            Idle().Pause();
+            Press().Begin(PressRect(), _tuning);
         }
 
         public void AdvancePress(float delta)
@@ -84,6 +98,13 @@ namespace FishPuzzle.Presentation
             {
                 _pressFeedback.End();
             }
+
+            PlayIdle();
+        }
+
+        private void OnEnable()
+        {
+            PlayIdle();
         }
 
         public void OnPointerDown(PointerEventData eventData)
@@ -129,6 +150,20 @@ namespace FishPuzzle.Presentation
             }
         }
 
+        public void OnCancel(BaseEventData eventData)
+        {
+            if (!_gestureActive)
+            {
+                return;
+            }
+
+            _gestureActive = false;
+            if (_onCancel != null)
+            {
+                _onCancel(this);
+            }
+        }
+
         public void BindCatalog(FishVisualCatalog catalog)
         {
             _catalog = catalog;
@@ -159,6 +194,31 @@ namespace FishPuzzle.Presentation
 
             _visual.sprite = sprite;
             _visual.enabled = true;
+            PlayIdle();
+        }
+
+        private void PlayIdle()
+        {
+            if (IsPressed)
+            {
+                return;
+            }
+
+            Idle().Play(PressRect(), _tuning);
+        }
+
+        private FishIdleSway Idle()
+        {
+            if (_idleSway == null)
+            {
+                _idleSway = GetComponent<FishIdleSway>();
+                if (_idleSway == null)
+                {
+                    _idleSway = gameObject.AddComponent<FishIdleSway>();
+                }
+            }
+
+            return _idleSway;
         }
 
         private FishPressFeedback Press()

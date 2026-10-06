@@ -22,5 +22,6 @@ MonoBehaviour:
   _tankUnlockGoldCost: 600
   _extraTankAdUnlockAllowed: 1
   _distinctFishTypesPerBubble: 3
+  _maxFishPerBubble: 5
   _outOfSpaceRescueEnabled: 0
   _failTimerEnabled: 0

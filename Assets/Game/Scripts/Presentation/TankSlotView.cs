@@ -82,5 +82,56 @@ namespace FishPuzzle.Presentation
 
             return container.Find("FishSlot_" + ordinal) as RectTransform;
         }
+
+        /// <summary>Fish inside a tank keep the gameplay base size. They overlap instead of shrinking.</summary>
+        public const float TankFishSize = BubbleFishLayoutController.FishSize;
+
+        private static readonly Vector2[][] TankFormations =
+        {
+            new[] { new Vector2(0f, 0f) },
+            new[] { new Vector2(-28f, 4f), new Vector2(28f, -4f) },
+            new[] { new Vector2(-40f, 7f), new Vector2(0f, -6f), new Vector2(40f, 7f) }
+        };
+
+        public static Vector2 TankFishPosition(int ordinal, int occupiedCount)
+        {
+            var count = Mathf.Clamp(occupiedCount, 1, TankFormations.Length);
+            var formation = TankFormations[count - 1];
+            return ordinal >= 0 && ordinal < formation.Length ? formation[ordinal] : Vector2.zero;
+        }
+
+        /// <summary>
+        /// Places occupied fish close together in the water at the fixed base size.
+        /// Later fish draw in front (sibling order) so 1/3, 2/3 and 3/3 stay countable.
+        /// </summary>
+        public void LayoutContainedFish(int occupiedCount)
+        {
+            var count = Mathf.Clamp(occupiedCount, 1, TankFormations.Length);
+            for (var ordinal = 0; ordinal < TankFormations.Length; ordinal++)
+            {
+                var position = ordinal < count ? TankFishPosition(ordinal, count) : TankFishPosition(ordinal, ordinal + 1);
+                PlaceFishSlot(ordinal, position, TankFishSize);
+                var slot = GetFishAnchor(ordinal);
+                if (slot != null)
+                {
+                    slot.SetSiblingIndex(ordinal);
+                }
+            }
+        }
+
+        private void PlaceFishSlot(int ordinal, Vector2 anchoredPosition, float size)
+        {
+            var slot = GetFishAnchor(ordinal);
+            if (slot == null)
+            {
+                return;
+            }
+
+            slot.anchorMin = new Vector2(0.5f, 0.5f);
+            slot.anchorMax = new Vector2(0.5f, 0.5f);
+            slot.pivot = new Vector2(0.5f, 0.5f);
+            slot.anchoredPosition = anchoredPosition;
+            slot.sizeDelta = new Vector2(size, size);
+        }
     }
 }

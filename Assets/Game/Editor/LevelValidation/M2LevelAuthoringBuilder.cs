@@ -10,13 +10,14 @@ using UnityEngine;
 namespace FishPuzzle.EditorTools
 {
     /// <summary>
-    /// Writes the standard 10-slot pile and Level_001 through Unity serialization.
+    /// Writes the standard 10-slot pile and the legacy 36-fish test fixture (formerly Level_001) through Unity serialization.
+    /// Since M11.2 the shipped Level_001 is the 3-bubble onboarding level authored in Data/Levels.
     /// Batch entry point: FishPuzzle.EditorTools.M2LevelAuthoringBuilder.BuildAndExit
     /// </summary>
     public static class M2LevelAuthoringBuilder
     {
         public const string LayoutPath = "Assets/Game/Data/BubblePileLayouts/BPL_Standard_10.asset";
-        public const string LevelPath = "Assets/Game/Data/Levels/Level_001.asset";
+        public const string LevelPath = "Assets/Game/Tests/Fixtures/LegacyLevel_036.asset";
 
         private static readonly FishType[] TargetGroups =
         {
@@ -93,6 +94,7 @@ namespace FishPuzzle.EditorTools
         {
             EnsureFolder("Assets/Game/Data/BubblePileLayouts");
             EnsureFolder("Assets/Game/Data/Levels");
+            EnsureFolder("Assets/Game/Tests/Fixtures");
 
             var layout = LoadOrCreate<BubblePileLayout>(LayoutPath);
             var level = LoadOrCreate<LevelData>(LevelPath);

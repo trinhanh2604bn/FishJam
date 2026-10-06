@@ -11,7 +11,7 @@ namespace FishPuzzle.Tests.EditMode
 {
     public sealed class M6ProgressionTests
     {
-        private const string LevelPath = "Assets/Game/Data/Levels/Level_001.asset";
+        private const string LevelPath = "Assets/Game/Tests/Fixtures/LegacyLevel_036.asset";
         private const string ConfigPath = "Assets/Game/Data/Config/GameConfig.asset";
 
         [Test]

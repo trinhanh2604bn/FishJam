@@ -198,7 +198,7 @@ namespace FishPuzzle.Presentation
             var ripple = NextRipple();
             if (ripple != null)
             {
-                var duration = _tuning != null ? _tuning.TouchRippleDuration : 0.36f;
+                var duration = _tuning != null ? _tuning.TouchRippleDuration : 0.35f;
                 ripple.Play(local, RippleSprite(), duration);
             }
 

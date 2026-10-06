@@ -16,13 +16,13 @@ namespace FishPuzzle.Tests.EditMode
         {
             var tuning = AssetDatabase.LoadAssetAtPath<AnimationTuning>(TuningPath);
 
-            Assert.That(tuning.FishRouteDuration, Is.InRange(0.22f, 0.26f));
+            Assert.That(tuning.FishRouteDuration, Is.InRange(0.38f, 0.46f));
             Assert.That(tuning.FishLandingBounceDuration, Is.InRange(0.08f, 0.10f));
             Assert.That(tuning.TankResolveDuration, Is.InRange(0.16f, 0.20f));
             Assert.That(tuning.TankTargetSwapDuration, Is.InRange(0.10f, 0.14f));
             Assert.That(tuning.TrayAutoMoveDuration, Is.InRange(0.18f, 0.22f));
             Assert.That(tuning.BubbleFishReflowDuration, Is.InRange(0.13f, 0.16f));
-            Assert.That(tuning.BubblePopDuration, Is.InRange(0.20f, 0.24f));
+            Assert.That(tuning.BubblePopDuration, Is.InRange(0.05f, 0.10f));
             Assert.That(tuning.BubbleFallDuration, Is.InRange(0.17f, 0.21f));
             Assert.That(tuning.BubbleSlideDuration, Is.InRange(0.17f, 0.21f));
             Assert.That(tuning.BubbleTopSpawnDuration, Is.InRange(0.22f, 0.27f));
@@ -70,6 +70,46 @@ namespace FishPuzzle.Tests.EditMode
                 Assert.That(feedback.Lift, Is.EqualTo(0f));
                 Assert.That(visual.anchoredPosition.y, Is.EqualTo(0f).Within(0.01f));
                 Assert.That(visual.localScale.x, Is.EqualTo(1f).Within(0.01f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);
+            }
+        }
+
+        [Test]
+        public void FishIdle_SwaysLikeAPress_WithoutMovingTheRoot()
+        {
+            var host = new GameObject("fish", typeof(RectTransform), typeof(FishIdleSway));
+            var visualObject = new GameObject("visual", typeof(RectTransform));
+            var visual = visualObject.GetComponent<RectTransform>();
+            visual.SetParent(host.transform, false);
+            var idle = host.GetComponent<FishIdleSway>();
+            var root = host.GetComponent<RectTransform>();
+            try
+            {
+                var rootPosition = root.anchoredPosition;
+                idle.Play(visual, AnimationTuning.RuntimeDefault());
+
+                var maxAngle = 0f;
+                for (var i = 0; i < 12; i++)
+                {
+                    idle.Tick(0.05f);
+                    maxAngle = Mathf.Max(maxAngle, Mathf.Abs(idle.Angle));
+                }
+
+                Assert.That(idle.IsPlaying, Is.True);
+                Assert.That(maxAngle, Is.GreaterThan(1.4f).And.LessThanOrEqualTo(2.05f));
+                Assert.That(Mathf.Abs(visual.anchoredPosition.y), Is.LessThanOrEqualTo(1.6f));
+                Assert.That(root.anchoredPosition, Is.EqualTo(rootPosition));
+
+                idle.Pause();
+
+                Assert.That(idle.IsPlaying, Is.False);
+                Assert.That(idle.Angle, Is.EqualTo(0f));
+                Assert.That(visual.anchoredPosition.y, Is.EqualTo(0f).Within(0.01f));
+                Assert.That(visual.localEulerAngles.z, Is.EqualTo(0f).Within(0.01f));
+                Assert.That(root.anchoredPosition, Is.EqualTo(rootPosition));
             }
             finally
             {

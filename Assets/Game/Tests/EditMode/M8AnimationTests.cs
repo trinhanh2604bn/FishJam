@@ -11,7 +11,7 @@ namespace FishPuzzle.Tests.EditMode
     public sealed class M8AnimationTests
     {
         private const string TuningPath = "Assets/Game/Data/Config/AnimationTuning.asset";
-        private const string LevelPath = "Assets/Game/Data/Levels/Level_001.asset";
+        private const string LevelPath = "Assets/Game/Tests/Fixtures/LegacyLevel_036.asset";
         private const string ConfigPath = "Assets/Game/Data/Config/GameConfig.asset";
 
         [Test]
@@ -21,7 +21,7 @@ namespace FishPuzzle.Tests.EditMode
 
             Assert.That(tuning, Is.Not.Null);
             Assert.That(tuning.FishTapSquashDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
-            Assert.That(tuning.FishRouteDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
+            Assert.That(tuning.FishRouteDuration, Is.InRange(0.38f, 0.46f));
             Assert.That(tuning.FishLandingBounceDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
             Assert.That(tuning.TankResolveDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
             Assert.That(tuning.TankTargetSwapDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
@@ -51,6 +51,10 @@ namespace FishPuzzle.Tests.EditMode
             Assert.That(Vector3.Distance(atEnd, end), Is.LessThan(0.001f));
             Assert.That(mid.y, Is.GreaterThan(start.y));
             Assert.That(mid.y, Is.GreaterThan(end.y));
+            Assert.That(PresentationMotion.Hop(0f), Is.EqualTo(0f).Within(0.001f));
+            Assert.That(PresentationMotion.Hop(1f), Is.EqualTo(1f).Within(0.001f));
+            Assert.That(PresentationMotion.Hop(0.25f), Is.LessThan(0.25f));
+            Assert.That(PresentationMotion.Hop(0.5f), Is.EqualTo(0.5f).Within(0.02f));
         }
 
         [Test]

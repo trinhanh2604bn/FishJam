@@ -13,28 +13,38 @@ MonoBehaviour:
   m_Name: AnimationTuning
   m_EditorClassIdentifier: FishPuzzle.Runtime::FishPuzzle.Presentation.AnimationTuning
   _fishTapSquashDuration: 0.04
-  _fishRouteDuration: 0.24
+  _fishRouteDuration: 0.42
   _fishLandingBounceDuration: 0.09
   _fishPressLift: 8
   _fishPressScale: 1.05
   _fishPressWiggleDegrees: 2
   _fishPressBob: 1.5
-  _fishArcHeight: 140
+  _fishIdleWiggleDegrees: 2
+  _fishIdleBob: 1.5
+  _fishIdleCycle: 0.48
+  _fishArcHeight: 120
   _fishArcLateral: 48
   _tankResolveDuration: 0.18
   _tankTargetSwapDuration: 0.12
-  _trayAutoMoveDuration: 0.2
+  _trayAutoMoveDuration: 0.21
   _trayAutoMoveStagger: 0.02
   _landingOvershoot: 0.16
-  _bubbleFishReflowDuration: 0.14
-  _bubblePopDuration: 0.22
-  _bubbleFallDuration: 0.19
-  _bubbleSlideDuration: 0.19
+  _bubbleFishReflowDuration: 0.155
+  _bubblePopDuration: 0.07
+  _bubbleBurstLifetime: 0.95
+  _bubbleBurstCount: 22
+  _bubbleBurstPoolCap: 48
+  _bubbleLaunchLifetime: 1.45
+  _bubbleLaunchCount: 12
+  _tankSplashDropletCount: 8
+  _tankSplashPoolCap: 4
+  _bubbleFallDuration: 0.2
+  _bubbleSlideDuration: 0.2
   _bubbleLandingBounceDuration: 0.05
-  _bubbleTopSpawnDuration: 0.24
+  _bubbleTopSpawnDuration: 0.25
   _bubblePathArc: 22
   _topSpawnOffset: 340
-  _touchRippleDuration: 0.36
+  _touchRippleDuration: 0.35
   _touchBubbleInterval: 0.11
   _touchBubbleLifetime: 0.42
   _touchBubbleLimit: 6

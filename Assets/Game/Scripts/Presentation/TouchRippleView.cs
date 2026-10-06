@@ -10,7 +10,7 @@ namespace FishPuzzle.Presentation
     {
         private RectTransform _rect;
         private Image _image;
-        private float _duration = 0.36f;
+        private float _duration = 0.35f;
         private float _elapsed;
         private Vector2 _origin;
 
@@ -39,7 +39,7 @@ namespace FishPuzzle.Presentation
         public void Play(Vector2 anchoredPosition, Sprite sprite, float duration)
         {
             _origin = anchoredPosition;
-            _duration = duration > 0f ? duration : 0.36f;
+            _duration = duration > 0f ? duration : 0.35f;
             _elapsed = 0f;
             IsActive = true;
             if (_rect == null)

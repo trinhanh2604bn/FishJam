@@ -31,6 +31,10 @@ namespace FishPuzzle.Core
         private IRewardedAdService _rewardedAds;
         private Action _retryAttempt;
         private Action _progressionChanged;
+        private Action _nextLevel;
+        private Action _replayLevel;
+        private Action _playAgain;
+        private Func<bool> _hasNextLevel;
         private LosePanelView _losePanel;
         private WinPanelView _winPanel;
         private UnlockModalView _unlockModal;
@@ -47,6 +51,10 @@ namespace FishPuzzle.Core
         private TouchFeedbackController _touch;
         private int _acceptedRouteCount;
         private int _tankSplashCount;
+        private int _bubbleBurstEmissions;
+        private float _lastBubblePopSeconds;
+        private BubbleBurstPool _bursts;
+        private BubbleBurstPool _launchBursts;
 
         public LevelSession Session => _session;
 
@@ -64,11 +72,21 @@ namespace FishPuzzle.Core
 
         public int TankSplashCount => _tankSplashCount;
 
+        public int BubbleBurstEmissionCount => _bubbleBurstEmissions;
+
+        public int ActiveBubbleBurstCount => _bursts != null ? _bursts.ActiveCount : 0;
+
+        public float LastBubblePopSeconds => _lastBubblePopSeconds;
+
         public TouchFeedbackController TouchFeedback => _touch;
 
         public bool IsUnlockModalVisible => _unlockModal != null && _unlockModal.IsShown;
 
         public UnlockModalView UnlockModal => _unlockModal;
+
+        public WinPanelView WinPanel => _winPanel;
+
+        public LosePanelView LosePanel => _losePanel;
 
         public void Configure(
             ProgressionRuntime progression,
@@ -82,6 +100,18 @@ namespace FishPuzzle.Core
             _art = art;
             _retryAttempt = retryAttempt;
             _progressionChanged = progressionChanged;
+        }
+
+        /// <summary>
+        /// Win panel requests. The level flow owner (bootstrapper) rebuilds the attempt.
+        /// This controller never chooses the next LevelData itself.
+        /// </summary>
+        public void ConfigureLevelFlow(Action nextLevel, Action replayLevel, Action playAgain, Func<bool> hasNextLevel)
+        {
+            _nextLevel = nextLevel;
+            _replayLevel = replayLevel;
+            _playAgain = playAgain;
+            _hasNextLevel = hasNextLevel;
         }
 
         public void SuppressBubblePopVfx()
@@ -130,6 +160,16 @@ namespace FishPuzzle.Core
             _viewsByFishId.Clear();
             _session = null;
             CleanupEphemeral();
+            if (_bursts != null)
+            {
+                _bursts.ReleaseAll();
+            }
+
+            if (_launchBursts != null)
+            {
+                _launchBursts.ReleaseAll();
+            }
+
             if (_losePanel != null)
             {
                 _losePanel.Hide();
@@ -168,6 +208,18 @@ namespace FishPuzzle.Core
             _pressedFish = null;
             _acceptedRouteCount = 0;
             _tankSplashCount = 0;
+            _bubbleBurstEmissions = 0;
+            _lastBubblePopSeconds = 0f;
+            if (_bursts != null)
+            {
+                _bursts.ReleaseAll();
+            }
+
+            if (_launchBursts != null)
+            {
+                _launchBursts.ReleaseAll();
+            }
+
             _presentationFinished = true;
             _visualLock = false;
             if (animationTuning != null)
@@ -404,6 +456,7 @@ namespace FishPuzzle.Core
                 return;
             }
 
+            view.SetPresentationTuning(_tuning);
             view.BindInteraction(fishId, TryBeginFishPress, CommitPressedFish, CancelPressedFish);
             if (!enableInput)
             {
@@ -516,11 +569,29 @@ namespace FishPuzzle.Core
             if (_art != null)
             {
                 splash = _art.TankSplash;
-                droplet = _art.SplashDroplet != null ? _art.SplashDroplet : _art.SmallBubbleParticle;
                 ring = _art.TouchRipple;
             }
 
-            var splashView = TankSplashView.Play(_flightLayer, anchor.position, splash, droplet, ring, true);
+            droplet = ProceduralVfxSprite.Droplet;
+            var droplets = _tuning != null ? _tuning.TankSplashDropletCount : 6;
+            var splashCap = _tuning != null ? _tuning.TankSplashPoolCap : TankSplashView.DefaultPoolCap;
+            TankSplashView splashView = null;
+            try
+            {
+                splashView = TankSplashView.Play(
+                    _flightLayer,
+                    anchor.position,
+                    splash,
+                    droplet,
+                    ring,
+                    true,
+                    droplets,
+                    splashCap);
+            }
+            catch (Exception)
+            {
+                splashView = null;
+            }
             if (splashView != null)
             {
                 _tankSplashCount++;
@@ -585,10 +656,17 @@ namespace FishPuzzle.Core
 
         private IEnumerator PlayTurn(FishView view, FishSelectionResult result)
         {
+            Coroutine settle = null;
             try
             {
                 RefreshProgress();
                 StageBadges(result, _session.LastTurn);
+                var turn = _session.LastTurn ?? TurnResolution.Empty;
+                if (_session.State != GameState.Lose && turn.PoppedBubble)
+                {
+                    settle = StartCoroutine(PopAndSettle(turn));
+                }
+
                 yield return RouteSelectedFish(view, result);
                 if (result.Outcome == FishSelectionOutcome.RoutedToTank && result.TankCompleted)
                 {
@@ -605,23 +683,37 @@ namespace FishPuzzle.Core
                     RefreshTankBadge(result.TankSlotIndex);
                 }
 
-                var turn = _session.LastTurn ?? TurnResolution.Empty;
                 if (_session.State != GameState.Lose)
                 {
                     yield return PresentPromotions(turn);
                 }
 
-                if (_session.State != GameState.Lose && turn.PoppedBubble)
+                if (settle != null)
                 {
-                    _session.HoldForPresentation(GameState.PoppingBubble);
-                    yield return PopBubble(turn.PoppedBubbleId);
-                    yield return PlayPile(turn);
+                    yield return settle;
                 }
             }
             finally
             {
                 FinishPresentation();
             }
+        }
+
+        private IEnumerator PopAndSettle(TurnResolution turn)
+        {
+            if (turn == null || _session == null)
+            {
+                yield break;
+            }
+
+            _session.HoldForPresentation(GameState.PoppingBubble);
+            yield return PopBubble(turn.PoppedBubbleId);
+            if (_session.State == GameState.Lose)
+            {
+                yield break;
+            }
+
+            yield return PlayPile(turn);
         }
 
         private IEnumerator PlayExternal()
@@ -646,8 +738,9 @@ namespace FishPuzzle.Core
                 : TrayAnchor(result.TraySlotIndex);
             var toTank = result.Outcome == FishSelectionOutcome.RoutedToTank;
             var padding = toTank ? 0f : 8f;
+            var flightSeconds = toTank ? _tuning.FishRouteDuration : _tuning.TrayAutoMoveDuration;
             yield return Squash(view != null ? view.transform : null, _tuning.FishTapSquashDuration);
-            yield return FlyAndReflow(view, anchor, _tuning.FishRouteDuration);
+            yield return FlyAndReflow(view, anchor, flightSeconds, toTank);
             if (view != null && anchor != null)
             {
                 Place(view, anchor, padding);
@@ -689,7 +782,7 @@ namespace FishPuzzle.Core
 
                 _viewsByFishId.TryGetValue(promotion.FishId, out var view);
                 var anchor = TankAnchor(promotion.TankSlotIndex, promotion.LandedOrdinal);
-                yield return FlyToAnchor(view, anchor, 0f, _tuning.TrayAutoMoveDuration, TankTransform(promotion.TankSlotIndex));
+                yield return FlyToAnchor(view, anchor, 0f, _tuning.FishRouteDuration, TankTransform(promotion.TankSlotIndex));
                 var sourceIndex = promotion.SourceTrayIndex;
                 if (!SlotMatches(slots, sourceIndex, promotion.FishId))
                 {
@@ -771,7 +864,8 @@ namespace FishPuzzle.Core
 
         private IEnumerator PopBubble(string bubbleId)
         {
-            var pile = _scene.BubblePile;
+            _lastBubblePopSeconds = 0f;
+            var pile = _scene != null ? _scene.BubblePile : null;
             if (pile == null || !pile.TryGetByBubbleId(bubbleId, out var view) || view == null)
             {
                 yield break;
@@ -787,21 +881,16 @@ namespace FishPuzzle.Core
             var rect = view.transform as RectTransform;
             var parent = rect != null ? rect.parent as RectTransform : null;
             var origin = rect != null ? rect.anchoredPosition : Vector2.zero;
-            var popSprite = _suppressPopVfx || _art == null ? null : _art.BubblePopParticle;
-            var smallSprite = _suppressPopVfx || _art == null ? null : _art.SmallBubbleParticle;
-            if (BubblePopVfx.CanPlay(popSprite, smallSprite))
-            {
-                BubblePopVfx.Spawn(parent, origin, popSprite, smallSprite, _ephemeral);
-            }
+            EmitBubbleBurst(parent, origin);
 
-            var duration = _tuning.BubblePopDuration;
+            var duration = _tuning != null ? _tuning.BubblePopDuration : 0.07f;
+            _lastBubblePopSeconds = duration;
             var elapsed = 0f;
             while (elapsed < duration && rect != null)
             {
                 elapsed += Step();
                 var sample = PresentationMotion.Sample(rect != null, elapsed, duration);
                 rect.localScale = Vector3.one * PresentationMotion.PopScale(sample.T);
-                BubblePopVfx.Animate(_ephemeral, origin, sample.T);
                 if (sample.Completed)
                 {
                     break;
@@ -810,8 +899,114 @@ namespace FishPuzzle.Core
                 yield return null;
             }
 
+            if (rect != null)
+            {
+                rect.localScale = Vector3.zero;
+            }
+
             DestroyPoppingBubble();
-            DestroyEphemeral();
+        }
+
+        private void EmitLaunchBubbles(Vector3 worldPosition)
+        {
+            if (_suppressPopVfx)
+            {
+                return;
+            }
+
+            var small = _art != null ? _art.SmallBubbleParticle : null;
+            if (small == null)
+            {
+                return;
+            }
+
+            EnsureFlightLayer();
+            var parent = _flightLayer;
+            if (parent == null && _scene != null && _scene.BubblePile != null)
+            {
+                parent = _scene.BubblePile.transform as RectTransform;
+            }
+
+            if (parent == null)
+            {
+                return;
+            }
+
+            try
+            {
+                if (_launchBursts == null)
+                {
+                    var cap = _tuning != null ? _tuning.BubbleBurstPoolCap : BubbleBurstPool.DefaultPoolCap;
+                    _launchBursts = BubbleBurstPool.Create(parent, cap);
+                }
+
+                if (_launchBursts == null)
+                {
+                    return;
+                }
+
+                var lifetime = _tuning != null ? _tuning.BubbleLaunchLifetime : 1.45f;
+                var count = _tuning != null ? _tuning.BubbleLaunchCount : 12;
+                _launchBursts.EmitTrail(worldPosition, small, lifetime, count);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private void EmitBubbleBurst(RectTransform parent, Vector2 origin)
+        {
+            if (_suppressPopVfx || parent == null)
+            {
+                return;
+            }
+
+            var popSprite = _art != null ? _art.BubblePopParticle : null;
+            var smallSprite = _art != null ? _art.SmallBubbleParticle : null;
+            if (!BubblePopVfx.CanPlay(popSprite, smallSprite))
+            {
+                return;
+            }
+
+            try
+            {
+                EnsureBurstPool(parent);
+                if (_bursts == null)
+                {
+                    return;
+                }
+
+                var lifetime = _tuning != null ? _tuning.BubbleBurstLifetime : 0.95f;
+                var count = _tuning != null ? _tuning.BubbleBurstCount : 11;
+                var emitted = _bursts.Emit(origin, smallSprite, popSprite, lifetime, count);
+                if (emitted > 0)
+                {
+                    _bubbleBurstEmissions += emitted;
+                }
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private void EnsureBurstPool(RectTransform parent)
+        {
+            if (parent == null)
+            {
+                return;
+            }
+
+            var cap = _tuning != null ? _tuning.BubbleBurstPoolCap : BubbleBurstPool.DefaultPoolCap;
+            if (_bursts == null)
+            {
+                _bursts = BubbleBurstPool.Create(parent, cap);
+                return;
+            }
+
+            if (_bursts.transform.parent != parent)
+            {
+                _bursts.transform.SetParent(parent, false);
+            }
         }
 
         private IEnumerator MoveBubble(string bubbleId, int toSlotId)
@@ -896,7 +1091,7 @@ namespace FishPuzzle.Core
             }
         }
 
-        private IEnumerator FlyAndReflow(FishView view, RectTransform anchor, float seconds)
+        private IEnumerator FlyAndReflow(FishView view, RectTransform anchor, float seconds, bool hop)
         {
             var rect = view != null ? view.transform as RectTransform : null;
             EnsureFlightLayer();
@@ -907,7 +1102,7 @@ namespace FishPuzzle.Core
 
             var start = rect != null ? rect.position : Vector3.zero;
             var end = anchor != null ? anchor.TransformPoint(anchor.rect.center) : start;
-            var control = CurveControl(start, end);
+            var control = CurveControl(start, end, hop);
             var reflowSeconds = _tuning.BubbleFishReflowDuration;
             var duration = Mathf.Max(seconds, reflowSeconds);
             if (duration <= 0f)
@@ -928,7 +1123,8 @@ namespace FishPuzzle.Core
                 if (rect != null)
                 {
                     var sample = PresentationMotion.Sample(true, elapsed, seconds);
-                    rect.position = PresentationMotion.QuadraticBezier(start, control, end, PresentationMotion.EaseOutQuad(sample.T));
+                    var along = hop ? PresentationMotion.Hop(sample.T) : PresentationMotion.EaseOutQuad(sample.T);
+                    rect.position = PresentationMotion.QuadraticBezier(start, control, end, along);
                 }
 
                 ApplyReflow(reflowSeconds <= 0f ? 1f : Mathf.Clamp01(elapsed / reflowSeconds));
@@ -972,13 +1168,13 @@ namespace FishPuzzle.Core
 
             var start = rect.position;
             var end = anchor.TransformPoint(anchor.rect.center);
-            var control = CurveControl(start, end);
+            var control = CurveControl(start, end, true);
             var elapsed = 0f;
             while (elapsed < seconds && rect != null)
             {
                 elapsed += Step();
                 var sample = PresentationMotion.Sample(rect != null, elapsed, seconds);
-                rect.position = PresentationMotion.QuadraticBezier(start, control, end, PresentationMotion.EaseOutQuad(sample.T));
+                rect.position = PresentationMotion.QuadraticBezier(start, control, end, PresentationMotion.Hop(sample.T));
                 if (sample.Completed)
                 {
                     break;
@@ -1121,7 +1317,7 @@ namespace FishPuzzle.Core
 
                 if (tank != null)
                 {
-                    tank.localScale = PresentationMotion.BounceScale(sample.T, _tuning.LandingOvershoot * 0.5f);
+                    tank.localScale = PresentationMotion.BounceScale(sample.T, _tuning.LandingOvershoot * 0.32f);
                 }
 
                 if (sample.Completed)
@@ -1314,6 +1510,12 @@ namespace FishPuzzle.Core
             }
 
             var rect = view.transform as RectTransform;
+            if (result.Outcome == FishSelectionOutcome.RoutedToTank)
+            {
+                var departure = rect != null ? rect.position : view.transform.position;
+                EmitLaunchBubbles(departure);
+            }
+
             EnsureFlightLayer();
             if (rect != null && _flightLayer != null)
             {
@@ -1347,7 +1549,7 @@ namespace FishPuzzle.Core
                 var rect = _reflowRects[i];
                 BubbleFishLayoutController.Prepare(rect);
                 _reflowOrigins.Add(rect != null ? rect.anchoredPosition : Vector2.zero);
-                if (!BubbleFishLayoutController.TryGetPlacement(i, _reflowRects.Count, out var target, out _))
+                if (!BubbleFishLayoutController.TryGetPosition(i, _reflowRects.Count, out var target))
                 {
                     target = Vector2.zero;
                 }
@@ -1371,11 +1573,20 @@ namespace FishPuzzle.Core
             }
         }
 
-        private Vector3 CurveControl(Vector3 start, Vector3 end)
+        private Vector3 CurveControl(Vector3 start, Vector3 end, bool hop)
         {
             var scale = _flightLayer != null ? _flightLayer.lossyScale : Vector3.one;
             var control = (start + end) * 0.5f;
-            control.y += _tuning.FishArcHeight * scale.y;
+            var lift = _tuning.FishArcHeight * Mathf.Abs(scale.y);
+            if (hop)
+            {
+                control.y = Mathf.Max(start.y, end.y) + lift;
+            }
+            else
+            {
+                control.y += lift;
+            }
+
             var direction = end.x >= start.x ? -1f : 1f;
             control.x += _tuning.FishArcLateral * scale.x * direction;
             return control;
@@ -1848,6 +2059,13 @@ namespace FishPuzzle.Core
                 return null;
             }
 
+            var count = 1;
+            if (_session != null && slotIndex < _session.Tanks.Count && _session.Tanks[slotIndex] != null)
+            {
+                count = _session.Tanks[slotIndex].FillCount;
+            }
+
+            slots[slotIndex].LayoutContainedFish(count);
             return slots[slotIndex].GetFishAnchor(ordinal);
         }
 
@@ -1988,9 +2206,10 @@ namespace FishPuzzle.Core
         {
             OnAuthoritativeOutcome(GameState.Win);
             LockAllFishInput();
+            var hasNext = HasNextLevel();
             if (_winPanel != null)
             {
-                _winPanel.Show();
+                _winPanel.Show(ScoreReward(), hasNext);
                 return;
             }
 
@@ -2003,7 +2222,15 @@ namespace FishPuzzle.Core
             var canvas = _scene.GlobalProgressDisplay.canvas;
             var overlay = canvas != null ? canvas.transform.Find("OverlayRoot") : null;
             var parent = overlay != null ? overlay : _scene.GlobalProgressDisplay.transform;
-            _winPanel = WinPanelView.Create(parent, _scene.GlobalProgressDisplay.font);
+            _winPanel = WinPanelView.Create(
+                parent,
+                _scene.GlobalProgressDisplay.font,
+                _art,
+                ScoreReward(),
+                () => _nextLevel?.Invoke(),
+                () => _replayLevel?.Invoke(),
+                () => _playAgain?.Invoke(),
+                hasNext);
         }
 
         private void ShowLose()
@@ -2012,7 +2239,7 @@ namespace FishPuzzle.Core
             LockAllFishInput();
             if (_losePanel != null)
             {
-                _losePanel.Show();
+                _losePanel.Show(LifeCost());
                 return;
             }
 
@@ -2025,7 +2252,7 @@ namespace FishPuzzle.Core
             var canvas = _scene.GlobalProgressDisplay.canvas;
             var overlay = canvas != null ? canvas.transform.Find("OverlayRoot") : null;
             var parent = overlay != null ? overlay : _scene.GlobalProgressDisplay.transform;
-            _losePanel = LosePanelView.Create(parent, _scene.GlobalProgressDisplay.font, _retryAttempt);
+            _losePanel = LosePanelView.Create(parent, _scene.GlobalProgressDisplay.font, _retryAttempt, _art, LifeCost());
         }
 
         private void LockAllFishInput()
@@ -2117,7 +2344,33 @@ namespace FishPuzzle.Core
                 coin,
                 () => ConfirmGoldUnlock(),
                 ConfirmRewardUnlock,
-                CloseUnlockModal);
+                CloseUnlockModal,
+                _art);
+        }
+
+        private bool HasNextLevel()
+        {
+            return _hasNextLevel != null && _hasNextLevel();
+        }
+
+        private int ScoreReward()
+        {
+            if (_session != null && _session.Config != null)
+            {
+                return _session.Config.LevelCompleteScoreReward;
+            }
+
+            return 20;
+        }
+
+        private int LifeCost()
+        {
+            if (_session != null && _session.Config != null)
+            {
+                return _session.Config.LoseLifeCost;
+            }
+
+            return 1;
         }
 
         private void RefreshProgress()

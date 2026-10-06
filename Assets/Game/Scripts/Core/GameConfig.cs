@@ -44,6 +44,9 @@ namespace FishPuzzle.Core
         [Tooltip("Distinct fish types required in a standard bubble. Locked default is 3.")]
         [SerializeField] private int _distinctFishTypesPerBubble = 3;
 
+        [Tooltip("Maximum fish authored inside one bubble. Locked default is 5. Harder levels add bubbles, not fish per bubble.")]
+        [SerializeField] private int _maxFishPerBubble = 5;
+
         [Header("Disabled Rules")]
         [Tooltip("Out-of-space rescue is disabled. Reaching the waiting-tray fail count loses immediately.")]
         [SerializeField] private bool _outOfSpaceRescueEnabled = false;
@@ -71,6 +74,8 @@ namespace FishPuzzle.Core
 
         public int DistinctFishTypesPerBubble => _distinctFishTypesPerBubble;
 
+        public int MaxFishPerBubble => _maxFishPerBubble;
+
         public bool OutOfSpaceRescueEnabled => _outOfSpaceRescueEnabled;
 
         public bool FailTimerEnabled => _failTimerEnabled;
@@ -82,6 +87,7 @@ namespace FishPuzzle.Core
             ReportUnlessPositive(nameof(WaitingTraySlotCount), _waitingTraySlotCount);
             ReportUnlessPositive(nameof(WaitingTrayFailCount), _waitingTrayFailCount);
             ReportUnlessPositive(nameof(DistinctFishTypesPerBubble), _distinctFishTypesPerBubble);
+            ReportUnlessPositive(nameof(MaxFishPerBubble), _maxFishPerBubble);
 
             ReportIfNegative(nameof(LevelCompleteScoreReward), _levelCompleteScoreReward);
             ReportIfNegative(nameof(LoseLifeCost), _loseLifeCost);

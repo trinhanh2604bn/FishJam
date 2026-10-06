@@ -16,6 +16,7 @@ namespace FishPuzzle.Tests.PlayMode
         [UnitySetUp]
         public IEnumerator LoadGameplayScene()
         {
+            LegacyLevelFixture.UseForNextSceneLoad();
             yield return SceneManager.LoadSceneAsync("Gameplay", LoadSceneMode.Single);
             yield return null;
             Canvas.ForceUpdateCanvases();

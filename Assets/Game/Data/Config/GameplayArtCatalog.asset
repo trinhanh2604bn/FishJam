@@ -42,3 +42,14 @@ MonoBehaviour:
   _touchRipple: {fileID: 21300000, guid: f6f6a50f6ec42bc46802516fb77de2b1, type: 3}
   _tankSplash: {fileID: 21300000, guid: 5527b1803d9577341a7463de663406a7, type: 3}
   _splashDroplet: {fileID: 21300000, guid: 67e3f571b0a341a429179006c0e0723d, type: 3}
+  _modalPanel: {fileID: 21300000, guid: 2e050fa0ca775b74e808be41b7d1a676, type: 3}
+  _modalHeader: {fileID: 21300000, guid: 26aeaf6dfbd5bb1499d375a93985bd71, type: 3}
+  _modalInner: {fileID: 21300000, guid: bba6f3940aa999e49ba91c9a2c944903, type: 3}
+  _buttonGreenLarge: {fileID: 21300000, guid: 737c19e62023b5a4196d229c213591cf, type: 3}
+  _buttonBlueLarge: {fileID: 21300000, guid: 7ae8db25f2d4b0e4194803d77ba50fd8, type: 3}
+  _buttonClose: {fileID: 21300000, guid: 2201e937c13a5674d94184b1673e5c87, type: 3}
+  _closeIcon: {fileID: 21300000, guid: 5f68fadf75740a54f857132828de12e1, type: 3}
+  _rewardedAdIcon: {fileID: 21300000, guid: 441bf916810f63440848768cd592cb2f, type: 3}
+  _successBurst: {fileID: 21300000, guid: a40efe99aa0402845b63a45713598fc0, type: 3}
+  _coinSparkle: {fileID: 21300000, guid: 60e771cd5eb53544789831a715c5b246, type: 3}
+  _failFlash: {fileID: 21300000, guid: 3c38f0de076e4044aa1f10708bbec366, type: 3}

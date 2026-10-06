@@ -227,6 +227,16 @@ namespace FishPuzzle.Domain
                     continue;
                 }
 
+                if (config.MaxFishPerBubble > 0 && fishes.Count > config.MaxFishPerBubble)
+                {
+                    issues.Add(Error(
+                        LevelValidationCodes.BubbleFishCountAboveMax,
+                        DescribeBubble(bubble, i) + " contains " + fishes.Count
+                        + " fish; the maximum is " + config.MaxFishPerBubble + " (GameConfig.MaxFishPerBubble). Add another bubble instead.",
+                        levelId,
+                        bubble.BubbleId));
+                }
+
                 var distinct = new HashSet<FishType>();
                 for (var fishIndex = 0; fishIndex < fishes.Count; fishIndex++)
                 {
