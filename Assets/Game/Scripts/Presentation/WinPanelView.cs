@@ -168,6 +168,11 @@ namespace FishPuzzle.Presentation
             var caption = ModalChrome.CreateLabel(panel.transform, "ProgressCaption", ProgressCaptionText, font, 46f, new Vector2(0f, 62f), new Vector2(800f, 130f), Color.white);
             ResultUiStyle.Chunky(caption, 46f, Color.white, ResultUiStyle.DeepNavy);
             caption.lineSpacing = -12f;
+            caption.textWrappingMode = TextWrappingModes.Normal;
+            caption.enableAutoSizing = true;
+            caption.fontSizeMin = 30f;
+            caption.fontSizeMax = 46f;
+            caption.overflowMode = TextOverflowModes.Truncate;
             var track = ResultUiStyle.Sliced(panel.transform, "ProgressTrack", art != null ? art.ProgressTrack : null, new Vector2(-30f, -72f), new Vector2(TrackWidth, TrackHeight), new Color(0.14f, 0.12f, 0.5f, 1f));
             var fill = ResultUiStyle.Sliced(track.transform, "ProgressFill", art != null ? art.ProgressFill : null, Vector2.zero, Vector2.zero, new Color(0.3f, 0.82f, 0.3f, 1f));
             var fillRect = fill.rectTransform;

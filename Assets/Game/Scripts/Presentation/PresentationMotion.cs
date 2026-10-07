@@ -20,6 +20,10 @@ namespace FishPuzzle.Presentation
 
     public static class PresentationMotion
     {
+        // Relative speed at each time knot, linear in between: quick launch (0–15%), readable glide (15–82%),
+        // snappier entry (82–100%). Speed never reaches zero, so the fish moves on the first frame and lands without a float.
+        private static readonly float[] PaceTimes = { 0f, 0.15f, 0.82f, 1f };
+        private static readonly float[] PaceSpeeds = { 0.55f, 1.2f, 0.9f, 1.3f };
         public static MotionSample Sample(bool targetAlive, float elapsed, float duration)
         {
             if (!targetAlive || duration <= 0f || elapsed >= duration)
@@ -53,6 +57,32 @@ namespace FishPuzzle.Presentation
         {
             var clamped = Mathf.Clamp01(t);
             return clamped * clamped * (3f - (2f * clamped));
+        }
+
+        /// <summary>Route progress for a fish flying into a tank: launch, glide, snappy landing. 0 → 0 and 1 → 1.</summary>
+        public static float RoutePace(float t)
+        {
+            var clamped = Mathf.Clamp01(t);
+            var total = 0f;
+            var reached = 0f;
+            for (var i = 0; i < PaceTimes.Length - 1; i++)
+            {
+                var t0 = PaceTimes[i];
+                var width = PaceTimes[i + 1] - t0;
+                var v0 = PaceSpeeds[i];
+                var v1 = PaceSpeeds[i + 1];
+                total += width * (v0 + v1) * 0.5f;
+                if (clamped <= t0)
+                {
+                    continue;
+                }
+
+                var span = Mathf.Min(clamped - t0, width);
+                var speedAt = v0 + ((v1 - v0) * (span / width));
+                reached += span * (v0 + speedAt) * 0.5f;
+            }
+
+            return total > 0f ? reached / total : clamped;
         }
 
         public static float PopScale(float t)

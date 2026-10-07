@@ -22,7 +22,7 @@ namespace FishPuzzle.Presentation
         [SerializeField] private float _fishIdleWiggleDegrees = 2f;
         [SerializeField] private float _fishIdleBob = 1.5f;
         [SerializeField] private float _fishIdleCycle = 0.48f;
-        [SerializeField] private float _fishArcHeight = 120f;
+        [SerializeField] private float _fishArcHeight = 140f;
         [SerializeField] private float _fishArcLateral = 48f;
 
         [Header("Tank And Tray")]
@@ -35,19 +35,29 @@ namespace FishPuzzle.Presentation
         [Header("Bubbles")]
         [SerializeField] private float _bubbleFishReflowDuration = 0.155f;
         [SerializeField] private float _bubblePopDuration = 0.07f;
-        [SerializeField] private float _bubbleBurstLifetime = 0.95f;
-        [SerializeField] private int _bubbleBurstCount = 22;
-        [SerializeField] private int _bubbleBurstPoolCap = 48;
+        [SerializeField] private float _bubbleBurstLifetime = 1.0f;
+        [SerializeField] private int _bubbleBurstCount = 32;
+        [SerializeField] private int _bubbleBurstPoolCap = 200;
         [SerializeField] private float _bubbleLaunchLifetime = 1.45f;
         [SerializeField] private int _bubbleLaunchCount = 12;
-        [SerializeField] private int _tankSplashDropletCount = 8;
+        [SerializeField] private int _tankSplashDropletCount = 10;
         [SerializeField] private int _tankSplashPoolCap = 4;
         [SerializeField] private float _bubbleFallDuration = 0.2f;
         [SerializeField] private float _bubbleSlideDuration = 0.2f;
-        [SerializeField] private float _bubbleLandingBounceDuration = 0.05f;
+        [SerializeField] private float _bubbleLandingBounceDuration = 0.1f;
+        [Tooltip("Delay between consecutive bubbles starting to settle or spawn, so the pile moves as a rhythmic wave.")]
+        [SerializeField] private float _bubbleSettleStagger = 0.06f;
         [SerializeField] private float _bubbleTopSpawnDuration = 0.25f;
         [SerializeField] private float _bubblePathArc = 22f;
         [SerializeField] private float _topSpawnOffset = 340f;
+
+        [Header("Level Intro")]
+        [Tooltip("Wait after the level appears before the whole pile drops in, so the transition fade can clear.")]
+        [SerializeField] private float _levelIntroDelay = 0.2f;
+        [Tooltip("Time for the whole pile to drop from above the screen into its slots. 0 disables the intro.")]
+        [SerializeField] private float _levelIntroDuration = 0.5f;
+        [Tooltip("Smallest drop distance. The drop is raised further when needed to start above the top of the screen.")]
+        [SerializeField] private float _levelIntroMinDrop = 600f;
 
         [Header("Touch")]
         [SerializeField] private float _touchRippleDuration = 0.35f;
@@ -106,17 +116,17 @@ namespace FishPuzzle.Presentation
 
         public float BubblePopDuration => Mathf.Max(0f, _bubblePopDuration);
 
-        public float BubbleBurstLifetime => _bubbleBurstLifetime > 0f ? _bubbleBurstLifetime : 0.95f;
+        public float BubbleBurstLifetime => _bubbleBurstLifetime > 0f ? _bubbleBurstLifetime : 1.0f;
 
-        public int BubbleBurstCount => _bubbleBurstCount > 0 ? _bubbleBurstCount : 22;
+        public int BubbleBurstCount => _bubbleBurstCount > 0 ? _bubbleBurstCount : 32;
 
-        public int BubbleBurstPoolCap => _bubbleBurstPoolCap > 0 ? _bubbleBurstPoolCap : 48;
+        public int BubbleBurstPoolCap => _bubbleBurstPoolCap > 0 ? _bubbleBurstPoolCap : 200;
 
         public float BubbleLaunchLifetime => _bubbleLaunchLifetime > 0f ? _bubbleLaunchLifetime : 1.45f;
 
         public int BubbleLaunchCount => _bubbleLaunchCount > 0 ? _bubbleLaunchCount : 12;
 
-        public int TankSplashDropletCount => _tankSplashDropletCount > 0 ? _tankSplashDropletCount : 8;
+        public int TankSplashDropletCount => _tankSplashDropletCount > 0 ? _tankSplashDropletCount : 10;
 
         public int TankSplashPoolCap => _tankSplashPoolCap > 0 ? _tankSplashPoolCap : 4;
 
@@ -125,6 +135,14 @@ namespace FishPuzzle.Presentation
         public float BubbleSlideDuration => Mathf.Max(0f, _bubbleSlideDuration);
 
         public float BubbleLandingBounceDuration => Mathf.Max(0f, _bubbleLandingBounceDuration);
+
+        public float BubbleSettleStagger => Mathf.Max(0f, _bubbleSettleStagger);
+
+        public float LevelIntroDelay => Mathf.Max(0f, _levelIntroDelay);
+
+        public float LevelIntroDuration => Mathf.Max(0f, _levelIntroDuration);
+
+        public float LevelIntroMinDrop => Mathf.Max(0f, _levelIntroMinDrop);
 
         public float BubbleTopSpawnDuration => Mathf.Max(0f, _bubbleTopSpawnDuration);
 
@@ -182,6 +200,10 @@ namespace FishPuzzle.Presentation
             ReportIfNegative(nameof(BubbleFallDuration), _bubbleFallDuration);
             ReportIfNegative(nameof(BubbleSlideDuration), _bubbleSlideDuration);
             ReportIfNegative(nameof(BubbleLandingBounceDuration), _bubbleLandingBounceDuration);
+            ReportIfNegative(nameof(BubbleSettleStagger), _bubbleSettleStagger);
+            ReportIfNegative(nameof(LevelIntroDelay), _levelIntroDelay);
+            ReportIfNegative(nameof(LevelIntroDuration), _levelIntroDuration);
+            ReportIfNegative(nameof(LevelIntroMinDrop), _levelIntroMinDrop);
             ReportIfNegative(nameof(BubbleTopSpawnDuration), _bubbleTopSpawnDuration);
             ReportIfNegative(nameof(TopSpawnOffset), _topSpawnOffset);
             ReportIfNegative(nameof(TouchRippleDuration), _touchRippleDuration);

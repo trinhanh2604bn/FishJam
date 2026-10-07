@@ -23,7 +23,7 @@ MonoBehaviour:
   _fishIdleWiggleDegrees: 2
   _fishIdleBob: 1.5
   _fishIdleCycle: 0.48
-  _fishArcHeight: 120
+  _fishArcHeight: 140
   _fishArcLateral: 48
   _tankResolveDuration: 0.18
   _tankTargetSwapDuration: 0.12
@@ -32,19 +32,23 @@ MonoBehaviour:
   _landingOvershoot: 0.16
   _bubbleFishReflowDuration: 0.155
   _bubblePopDuration: 0.07
-  _bubbleBurstLifetime: 0.95
-  _bubbleBurstCount: 22
-  _bubbleBurstPoolCap: 48
+  _bubbleBurstLifetime: 1
+  _bubbleBurstCount: 32
+  _bubbleBurstPoolCap: 200
   _bubbleLaunchLifetime: 1.45
   _bubbleLaunchCount: 12
-  _tankSplashDropletCount: 8
+  _tankSplashDropletCount: 10
   _tankSplashPoolCap: 4
   _bubbleFallDuration: 0.2
   _bubbleSlideDuration: 0.2
-  _bubbleLandingBounceDuration: 0.05
+  _bubbleLandingBounceDuration: 0.1
+  _bubbleSettleStagger: 0.06
   _bubbleTopSpawnDuration: 0.25
   _bubblePathArc: 22
   _topSpawnOffset: 340
+  _levelIntroDelay: 0.2
+  _levelIntroDuration: 0.5
+  _levelIntroMinDrop: 600
   _touchRippleDuration: 0.35
   _touchBubbleInterval: 0.11
   _touchBubbleLifetime: 0.42

@@ -76,7 +76,10 @@ namespace FishPuzzle.Tests.PlayMode
 
             var tuning = flow.Tuning;
             Assert.That(tuning.FishRouteDuration, Is.EqualTo(tuning.FishRouteBaseDuration + 0.2f).Within(0.0001f));
-            Assert.That(landedAt, Is.GreaterThanOrEqualTo(tuning.FishRouteDuration - 0.02f), "Flight lasts the slower route.");
+            Assert.That(
+                landedAt,
+                Is.GreaterThanOrEqualTo(tuning.FishRouteDuration - tuning.MaxFrameStep),
+                "Flight lasts the route; its first step runs in the release frame, before this clock starts.");
             Assert.That(elapsed - landedAt, Is.LessThan(1.5f), "No dead wait after landing.");
         }
 
@@ -178,9 +181,66 @@ namespace FishPuzzle.Tests.PlayMode
             var samples = new List<Vector2>();
             trail.CopySpawnPositions(samples);
             Assert.That(FishTrailEmitter.SamplesSpanRoute(samples, 20f), Is.True, "spawns " + samples.Count);
-            Assert.That(peak, Is.InRange(4, 10), "About 5–9 trail bubbles visible during Bubble → Tank flight (landing burst excluded).");
+            Assert.That(peak, Is.InRange(8, 14), "About 8–14 trail bubbles visible during Bubble → Tank flight (landing burst excluded).");
             Assert.That(trail.AllRaycastsDisabled(), Is.True);
             Assert.That(trail.AllParentedToFxRoot(), Is.True);
+            Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
+        }
+
+        [UnityTest]
+        public IEnumerator Release_LaunchesAtOnce_AndTrailStopsOnLanding()
+        {
+            var flow = Flow();
+            var trail = flow.Trail;
+            trail.ResetCounters();
+            var view = ViewFor(flow.Session.FindFirstIdleFish(FishType.Orange).Id);
+            PointerGesture.Press(view);
+            yield return null;
+            var before = trail.FxRoot.InverseTransformPoint(view.transform.position);
+            PointerGesture.ReleaseOver(view);
+            yield return null;
+            var after = trail.FxRoot.InverseTransformPoint(view.transform.position);
+            Assert.That(Vector2.Distance(before, after), Is.GreaterThan(0.5f), "Fish moves on the first frame after release.");
+            Assert.That(trail.SpawnCount, Is.GreaterThan(0), "Trail starts with the launch.");
+
+            var atLanding = -1;
+            var elapsed = 0f;
+            while ((flow.IsPresentationBusy || flow.State != GameState.PlayerInput) && elapsed < 8f)
+            {
+                if (atLanding < 0 && flow.TankSplashCount > 0)
+                {
+                    atLanding = trail.SpawnCount;
+                }
+
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.That(atLanding, Is.GreaterThan(0));
+            Assert.That(trail.SpawnCount, Is.EqualTo(atLanding), "No trail bubble is emitted after the fish lands.");
+            Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
+        }
+
+        [UnityTest]
+        public IEnumerator BubbleToTray_TrailIsLighter_AndFaster()
+        {
+            var flow = Flow();
+            var trail = flow.Trail;
+            trail.ResetCounters();
+            PointerGesture.Click(ViewFor(flow.Session.FindFirstIdleFish(FishType.PinkStriped).Id));
+            var peak = 0;
+            var elapsed = 0f;
+            while ((flow.IsPresentationBusy || flow.State != GameState.PlayerInput) && elapsed < 8f)
+            {
+                peak = Mathf.Max(peak, trail.ActiveCount);
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.That(flow.Session.Tray.Count, Is.EqualTo(1));
+            Assert.That(peak, Is.InRange(3, 8), "Lighter Bubble → Tray trail.");
+            Assert.That(flow.Tuning.TrayRouteDuration, Is.InRange(0.36f, 0.42f));
+            Assert.That(flow.Tuning.TrayRouteDuration, Is.LessThan(flow.Tuning.FishRouteDuration));
             Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
         }
 

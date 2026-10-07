@@ -11,28 +11,42 @@ namespace FishPuzzle.Presentation
     /// </summary>
     public sealed class FishTrailEmitter : MonoBehaviour
     {
-        public const int DefaultCap = 40;
-        public const int HardCap = 64;
-        public const float MinInterval = 0.045f;
-        public const float MaxInterval = 0.065f;
-        public const float MinLifetime = 0.30f;
-        public const float MaxLifetime = 0.45f;
-        public const float MinScale = 0.45f;
-        public const float MaxScale = 0.9f;
+        public const int DefaultCap = 200;
+        public const int HardCap = 240;
+        public const float MinInterval = 0.012f;
+        public const float MaxInterval = 0.022f;
+        public const float MinLifetime = 0.7f;
+        public const float MaxLifetime = 1.1f;
+        public const float MinScale = 0.32f;
+        public const float MaxScale = 1.0f;
+
+        /// <summary>Most trail bubbles are small; this share is drawn from the medium band instead.</summary>
+        public const float MediumChance = 0.2f;
+        public const float SmallMaxScale = 0.62f;
+        public const float MediumMinScale = 0.75f;
         public const float MinAlpha = 0.35f;
-        public const float MaxAlpha = 0.65f;
-        public const float MinRise = 15f;
-        public const float MaxRise = 35f;
+        public const float MaxAlpha = 0.75f;
+        public const float MinRise = 24f;
+        public const float MaxRise = 60f;
 
         /// <summary>Full width of the small sideways jitter, in FX-root pixels. Half of this is the maximum offset.</summary>
-        public const float HorizontalJitter = 16f;
+        public const float HorizontalJitter = 18f;
 
         /// <summary>Bubble → Waiting Tray uses a longer interval so the trail is lighter but still follows the route.</summary>
-        public const float TrayIntervalFactor = 1.75f;
+        public const float TrayIntervalFactor = 1.8f;
+
+        /// <summary>Interval multiplier for the first 10% of the route (light start).</summary>
+        public const float StartIntervalFactor = 1.4f;
+
+        /// <summary>Interval multiplier reached at the very end of the route (taper from 80%).</summary>
+        public const float EndIntervalFactor = 1.5f;
 
         public const string RootName = "FishTrailFxRoot";
 
         private const float BaseSize = 28f;
+
+        private static readonly Color SparkleTint = new Color(1f, 0.96f, 0.8f, 1f);
+        private static readonly Color BubbleTint = Color.white;
 
         private readonly List<Particle> _particles = new List<Particle>();
         private readonly List<Vector2> _spawnPositions = new List<Vector2>();
@@ -105,11 +119,34 @@ namespace FishPuzzle.Presentation
             _sprite = sprite;
         }
 
-        /// <summary>Random spawn interval inside [0.045, 0.065] s, stretched for the tray route.</summary>
+        /// <summary>Random spawn interval inside [0.012, 0.022] s, stretched for the tray route.</summary>
         public float NextInterval(bool toTray)
         {
             var interval = Mathf.Lerp(MinInterval, MaxInterval, Random01());
             return toTray ? interval * TrayIntervalFactor : interval;
+        }
+
+        /// <summary>Spawn interval at <paramref name="routeProgress"/> (0–1): light start, full middle, slight taper.</summary>
+        public float NextInterval(bool toTray, float routeProgress)
+        {
+            return NextInterval(toTray) * RouteDensityFactor(routeProgress);
+        }
+
+        /// <summary>Interval multiplier along the route. 1 means full density; larger means sparser.</summary>
+        public static float RouteDensityFactor(float routeProgress)
+        {
+            var t = Mathf.Clamp01(routeProgress);
+            if (t < 0.1f)
+            {
+                return StartIntervalFactor;
+            }
+
+            if (t <= 0.8f)
+            {
+                return 1f;
+            }
+
+            return Mathf.Lerp(1f, EndIntervalFactor, (t - 0.8f) / 0.2f);
         }
 
         /// <summary>
@@ -141,13 +178,15 @@ namespace FishPuzzle.Presentation
                 return false;
             }
 
-            var jitter = new Vector2((Random01() - 0.5f) * HorizontalJitter, (Random01() - 0.5f) * 8f);
-            var scale = Mathf.Lerp(MinScale, MaxScale, Random01());
+            var jitter = new Vector2((Random01() - 0.5f) * HorizontalJitter, (Random01() - 0.5f) * 10f);
+            var scale = Random01() < MediumChance
+                ? Mathf.Lerp(MediumMinScale, MaxScale, Random01())
+                : Mathf.Lerp(MinScale, SmallMaxScale, Random01());
             var life = Mathf.Lerp(MinLifetime, MaxLifetime, Random01());
             var drift = new Vector2((Random01() - 0.5f) * 8f, Mathf.Lerp(MinRise, MaxRise, Random01()));
             var alpha = Mathf.Lerp(MinAlpha, MaxAlpha, Random01());
             var anchored = WorldToAnchored(_layer, worldPosition) + jitter;
-            particle.Launch(_layer, _sprite, anchored, drift, BaseSize * scale, life, alpha);
+            particle.Launch(_layer, _sprite, anchored, drift, BaseSize * scale, life, alpha, BubbleTint, false, Random01());
             if (!PlacedNear(particle.WorldPosition, worldPosition, jitter))
             {
                 particle.MoveToWorld(_layer, worldPosition, jitter);
@@ -157,8 +196,38 @@ namespace FishPuzzle.Presentation
             return true;
         }
 
-        /// <summary>Short ring of bubbles around a landed fish.</summary>
-        public int Burst(Vector3 worldPosition, int count)
+        /// <summary>One small glint near <paramref name="worldPosition"/>. Skipped silently when the pool is full.</summary>
+        public bool EmitSparkle(Vector3 worldPosition)
+        {
+            if (_layer == null)
+            {
+                return false;
+            }
+
+            var particle = Rent();
+            if (particle == null)
+            {
+                return false;
+            }
+
+            var offset = new Vector2((Random01() - 0.5f) * 36f, (Random01() - 0.5f) * 26f);
+            var drift = new Vector2((Random01() - 0.5f) * 14f, Mathf.Lerp(8f, 22f, Random01()));
+            particle.Launch(
+                _layer,
+                ProceduralVfxSprite.Sparkle,
+                WorldToAnchored(_layer, worldPosition) + offset,
+                drift,
+                Mathf.Lerp(11f, 18f, Random01()),
+                Mathf.Lerp(0.28f, 0.42f, Random01()),
+                Mathf.Lerp(0.5f, 0.75f, Random01()),
+                SparkleTint,
+                true,
+                Random01());
+            return true;
+        }
+
+        /// <summary>Short ring of small and medium bubbles around a landed fish, plus a few light glints.</summary>
+        public int Burst(Vector3 worldPosition, int count, int sparkles = 0)
         {
             if (_sprite == null || _layer == null || count <= 0)
             {
@@ -168,6 +237,7 @@ namespace FishPuzzle.Presentation
             _burstCount++;
             var center = WorldToAnchored(_layer, worldPosition);
             var emitted = 0;
+            var phase = Random01() * Mathf.PI * 2f;
             for (var i = 0; i < count; i++)
             {
                 var particle = Rent();
@@ -176,13 +246,25 @@ namespace FishPuzzle.Presentation
                     break;
                 }
 
-                var angle = ((i / (float)count) * Mathf.PI * 2f) + (Random01() * 0.5f);
-                var radius = 26f + (Random01() * 18f);
+                var medium = i < 2;
+                var angle = phase + ((i / (float)count) * Mathf.PI * 2f) + ((Random01() - 0.5f) * 0.5f);
+                var radius = 18f + (Random01() * 20f);
                 var start = center + new Vector2(Mathf.Cos(angle) * radius, Mathf.Sin(angle) * radius * 0.6f);
-                var drift = new Vector2(Mathf.Cos(angle) * 22f, 34f + (Random01() * 30f));
-                var size = BaseSize * Mathf.Lerp(MinScale, MaxScale, Random01());
-                var life = Mathf.Lerp(0.35f, 0.55f, Random01());
-                particle.Launch(_layer, _sprite, start, drift, size, life, 0.55f + (Random01() * 0.2f));
+                var drift = new Vector2(Mathf.Cos(angle) * Mathf.Lerp(18f, 40f, Random01()), Mathf.Lerp(30f, 70f, Random01()));
+                var size = BaseSize * (medium ? Mathf.Lerp(MediumMinScale, MaxScale, Random01()) : Mathf.Lerp(MinScale, SmallMaxScale, Random01()));
+                var life = Mathf.Lerp(0.32f, 0.5f, Random01());
+                var alpha = Mathf.Lerp(0.45f, 0.75f, Random01());
+                particle.Launch(_layer, _sprite, start, drift, size, life, alpha, BubbleTint, false, Random01());
+                emitted++;
+            }
+
+            for (var i = 0; i < sparkles; i++)
+            {
+                if (!EmitSparkle(worldPosition))
+                {
+                    break;
+                }
+
                 emitted++;
             }
 
@@ -456,6 +538,9 @@ namespace FishPuzzle.Presentation
             private float _life;
             private float _elapsed;
             private float _alpha;
+            private float _wobblePhase;
+            private float _spin;
+            private bool _sparkle;
             private bool _active;
 
             public bool Active => _active;
@@ -487,7 +572,7 @@ namespace FishPuzzle.Presentation
                 return new Particle { _rect = rect, _image = image };
             }
 
-            public void Launch(RectTransform parent, Sprite sprite, Vector2 anchored, Vector2 drift, float size, float life, float alpha)
+            public void Launch(RectTransform parent, Sprite sprite, Vector2 anchored, Vector2 drift, float size, float life, float alpha, Color tint, bool sparkle, float random)
             {
                 if (_rect == null || _image == null || parent == null)
                 {
@@ -503,13 +588,18 @@ namespace FishPuzzle.Presentation
                 _life = Mathf.Max(0.05f, life);
                 _elapsed = 0f;
                 _alpha = alpha;
+                _sparkle = sparkle;
+                _wobblePhase = random * Mathf.PI * 2f;
+                _spin = (random - 0.5f) * 200f;
                 _active = true;
                 _image.sprite = sprite;
-                _image.color = new Color(1f, 1f, 1f, alpha);
+                _image.color = new Color(tint.r, tint.g, tint.b, alpha);
                 _rect.sizeDelta = new Vector2(size, size);
                 _rect.anchoredPosition = anchored;
                 _origin = anchored;
+                _rect.localRotation = Quaternion.identity;
                 _rect.localScale = Vector3.one;
+                _rect.SetAsLastSibling();
                 _rect.gameObject.SetActive(true);
             }
 
@@ -540,8 +630,20 @@ namespace FishPuzzle.Presentation
                 _elapsed += step;
                 var t = Mathf.Clamp01(_elapsed / _life);
                 var eased = PresentationMotion.EaseOutQuad(t);
-                _rect.anchoredPosition = _origin + (_drift * eased);
-                var scale = Mathf.Lerp(1f, 1.12f, eased);
+                float scale;
+                if (_sparkle)
+                {
+                    scale = Mathf.Sin(t * Mathf.PI) * 1.1f;
+                    _rect.localRotation = Quaternion.Euler(0f, 0f, _spin * t);
+                    _rect.anchoredPosition = _origin + (_drift * eased);
+                }
+                else
+                {
+                    scale = Mathf.Lerp(0.6f, 1f, Mathf.Clamp01(t / 0.15f)) * Mathf.Lerp(1f, 1.12f, eased);
+                    var wobble = Mathf.Sin((t * 8f) + _wobblePhase) * 2.5f * t;
+                    _rect.anchoredPosition = _origin + (_drift * eased) + new Vector2(wobble, 0f);
+                }
+
                 _rect.localScale = new Vector3(scale, scale, 1f);
                 var color = _image.color;
                 color.a = _alpha * (1f - (t * t));

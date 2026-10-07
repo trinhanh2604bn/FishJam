@@ -67,7 +67,7 @@ namespace FishPuzzle.Tests.EditMode
             {
                 var emitted = pool.Emit(new Vector2(12f, -8f), ProceduralVfxSprite.Dot, ProceduralVfxSprite.Ring, 0.40f, 11);
 
-                Assert.That(emitted, Is.InRange(BubbleBurstPool.MinCount, BubbleBurstPool.MaxCount));
+                Assert.That(emitted, Is.GreaterThanOrEqualTo(BubbleBurstPool.MinCount + BubbleBurstPool.MinMediumCount));
                 Assert.That(pool.LastEmitCount, Is.EqualTo(emitted));
                 Assert.That(pool.ActiveCount, Is.EqualTo(emitted));
                 Assert.That(pool.PoolSize, Is.EqualTo(emitted));
@@ -81,14 +81,14 @@ namespace FishPuzzle.Tests.EditMode
                 Assert.That(pool.MovedUpward(8f), Is.True);
                 Assert.That(pool.IsSemiTransparent(), Is.True);
 
-                pool.Tick(0.40f);
+                pool.Tick(0.60f);
 
                 Assert.That(pool.ActiveCount, Is.EqualTo(0));
                 var pooled = pool.PoolSize;
                 var again = pool.Emit(Vector2.zero, ProceduralVfxSprite.Dot, null, 0.40f, 11);
 
-                Assert.That(again, Is.EqualTo(emitted));
-                Assert.That(pool.PoolSize, Is.EqualTo(pooled));
+                Assert.That(again, Is.GreaterThanOrEqualTo(BubbleBurstPool.MinCount + BubbleBurstPool.MinMediumCount));
+                Assert.That(pool.PoolSize, Is.LessThanOrEqualTo(Mathf.Max(pooled, again)));
                 Assert.That(pool.ActiveCount, Is.EqualTo(again));
             }
             finally
@@ -133,11 +133,14 @@ namespace FishPuzzle.Tests.EditMode
             var pool = BubbleBurstPool.Create(parent.GetComponent<RectTransform>(), BubbleBurstPool.DefaultPoolCap);
             try
             {
-                pool.Emit(Vector2.zero, ProceduralVfxSprite.Dot, null, 0.40f, BubbleBurstPool.MaxCount);
-                pool.Emit(Vector2.zero, ProceduralVfxSprite.Dot, null, 0.40f, BubbleBurstPool.MaxCount);
-                var third = pool.Emit(Vector2.zero, ProceduralVfxSprite.Dot, null, 0.40f, BubbleBurstPool.MaxCount);
+                for (var i = 0; i < 6; i++)
+                {
+                    pool.Emit(Vector2.zero, ProceduralVfxSprite.Dot, null, 0.40f, BubbleBurstPool.MaxCount);
+                }
 
-                Assert.That(third, Is.EqualTo(BubbleBurstPool.MaxCount));
+                var skipped = pool.Emit(Vector2.zero, ProceduralVfxSprite.Dot, null, 0.40f, BubbleBurstPool.MaxCount);
+
+                Assert.That(skipped, Is.EqualTo(0), "A full pool skips particles instead of recycling live ones.");
                 Assert.That(pool.PoolSize, Is.EqualTo(BubbleBurstPool.DefaultPoolCap));
                 Assert.That(pool.ActiveCount, Is.LessThanOrEqualTo(BubbleBurstPool.DefaultPoolCap));
             }

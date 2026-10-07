@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using FishPuzzle.Ads;
+using FishPuzzle.Bubbles;
 using FishPuzzle.Domain;
 using FishPuzzle.Presentation;
 using FishPuzzle.Progression;
@@ -16,11 +17,19 @@ namespace FishPuzzle.Core
     /// </summary>
     public sealed class GameFlowController : MonoBehaviour
     {
+        private const int MaxTrailEmitsPerFrame = 6;
+        private const float TrailSparkleFromProgress = 0.7f;
+        private const int TrailSparkleEvery = 3;
+        private const int LandingBubbleCount = 12;
+        private const int LandingSparkleCount = 4;
+
         private readonly Dictionary<int, FishView> _viewsByFishId = new Dictionary<int, FishView>();
         private readonly List<GameObject> _ephemeral = new List<GameObject>();
         private readonly List<RectTransform> _reflowRects = new List<RectTransform>();
         private readonly List<Vector2> _reflowOrigins = new List<Vector2>();
         private readonly List<Vector2> _reflowTargets = new List<Vector2>();
+        private readonly List<BubbleView> _introBubbles = new List<BubbleView>();
+        private Coroutine _introRoutine;
 
         private LevelSession _session;
         private GameplaySceneReferences _scene;
@@ -61,6 +70,7 @@ namespace FishPuzzle.Core
         private HapticFeedbackService _haptics;
         private FishTrailEmitter _trail;
         private int _trailSampleMark;
+        private int _trailSparkleTick;
         private ComboFeedbackView _comboView;
         private Func<float> _presentationClock;
         private bool _suppressJuiceVfx;
@@ -79,6 +89,9 @@ namespace FishPuzzle.Core
         public bool IsWinPanelVisible => _winPanel != null && _winPanel.IsShown;
 
         public bool IsPresentationBusy => _visualLock;
+
+        /// <summary>True while the opening pile drop is playing. Input stays open; any action snaps the drop first.</summary>
+        public bool IsLevelIntroPlaying => _introRoutine != null;
 
         public bool IsFishPressCaptured => _pressedFish != null;
 
@@ -212,6 +225,7 @@ namespace FishPuzzle.Core
 
         public void CompletePresentationNow()
         {
+            FinishLevelIntro();
             if (_presentationFinished && !_visualLock)
             {
                 return;
@@ -327,6 +341,7 @@ namespace FishPuzzle.Core
             BindVisibleFish();
             RefreshAllBadges();
             RefreshProgress();
+            StartLevelIntro();
         }
 
         public bool OpenUnlockModal(int slotIndex)
@@ -335,6 +350,8 @@ namespace FishPuzzle.Core
             {
                 return false;
             }
+
+            FinishLevelIntro();
 
             ReleaseCapturedPress();
 
@@ -458,6 +475,7 @@ namespace FishPuzzle.Core
                 return;
             }
 
+            FinishLevelIntro();
             _visualLock = true;
             _presentationFinished = false;
             _presentationElapsed = 0f;
@@ -883,11 +901,49 @@ namespace FishPuzzle.Core
             }
         }
 
-        private float TrailInterval(bool toTray)
+        private float TrailInterval(bool toTray, float routeProgress)
         {
             return _trail != null
-                ? _trail.NextInterval(toTray)
+                ? _trail.NextInterval(toTray, routeProgress)
                 : FishTrailEmitter.MaxInterval * (toTray ? FishTrailEmitter.TrayIntervalFactor : 1f);
+        }
+
+        /// <summary>
+        /// Advances the trail clock and emits every bubble that came due this frame, spread along the segment
+        /// the fish covered since <paramref name="from"/>, so slow frames keep the density without bunching.
+        /// Tank routes add a light glint now and then near the destination.
+        /// </summary>
+        private void TickTrail(RectTransform fish, bool toTray, float step, float routeProgress, ref float clock, ref float interval, ref Vector3 from)
+        {
+            if (fish == null)
+            {
+                return;
+            }
+
+            var to = fish.position;
+            clock += step;
+            var emitted = 0;
+            while (clock >= interval && emitted < MaxTrailEmitsPerFrame)
+            {
+                clock -= interval;
+                var lag = step > 0f ? Mathf.Clamp01(clock / step) : 0f;
+                var position = Vector3.LerpUnclamped(to, from, lag);
+                EmitTrailAt(position);
+                if (!toTray && routeProgress >= TrailSparkleFromProgress && (++_trailSparkleTick % TrailSparkleEvery) == 0)
+                {
+                    EmitTrailSparkle(position);
+                }
+
+                interval = TrailInterval(toTray, routeProgress);
+                emitted++;
+            }
+
+            if (clock > interval)
+            {
+                clock = 0f;
+            }
+
+            from = to;
         }
 
         private void MarkTrailSamples()
@@ -929,6 +985,38 @@ namespace FishPuzzle.Core
             }
         }
 
+        private void EmitTrailAt(Vector3 worldPosition)
+        {
+            if (_suppressJuiceVfx || _trail == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _trail.Emit(worldPosition);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
+        private void EmitTrailSparkle(Vector3 worldPosition)
+        {
+            if (_suppressJuiceVfx || _trail == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _trail.EmitSparkle(worldPosition);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
         private void EmitLandingBubbles(Vector3 worldPosition)
         {
             if (_suppressJuiceVfx || _trail == null)
@@ -938,7 +1026,7 @@ namespace FishPuzzle.Core
 
             try
             {
-                _trail.Burst(worldPosition, 7);
+                _trail.Burst(worldPosition, LandingBubbleCount, LandingSparkleCount);
             }
             catch (Exception)
             {
@@ -1049,6 +1137,7 @@ namespace FishPuzzle.Core
                 return;
             }
 
+            FinishLevelIntro();
             _visualLock = true;
             _presentationFinished = false;
             _presentationElapsed = 0f;
@@ -1170,7 +1259,7 @@ namespace FishPuzzle.Core
             var toTank = result.Outcome == FishSelectionOutcome.RoutedToTank;
             var padding = toTank ? 0f : 8f;
             var flightSeconds = toTank ? _tuning.FishRouteDuration : _tuning.TrayRouteDuration;
-            yield return Squash(view != null ? view.transform : null, _tuning.FishTapSquashDuration);
+            StartCoroutine(Squash(view != null ? view.transform : null, _tuning.FishTapSquashDuration));
             yield return FlyAndReflow(view, anchor, flightSeconds, toTank);
             if (view != null && anchor != null)
             {
@@ -1287,25 +1376,309 @@ namespace FishPuzzle.Core
             yield return Wait(_tuning.TankTargetSwapDuration);
         }
 
+        /// <summary>
+        /// Settles the pile as one staggered wave: lower bubbles start first, each following bubble one beat later,
+        /// and top spawns continue the same beat. A bubble with several hops travels them without stopping.
+        /// </summary>
         private IEnumerator PlayPile(TurnResolution turn)
         {
+            var running = new List<Coroutine>();
+            var stagger = _tuning.BubbleSettleStagger;
             if (turn.PileMoves.Count > 0)
             {
                 _session.HoldForPresentation(GameState.SettlingBubblePile);
-                for (var i = 0; i < turn.PileMoves.Count; i++)
+                var paths = AdoptPileMoves(turn.PileMoves);
+                for (var i = 0; i < paths.Count; i++)
                 {
-                    yield return MoveBubble(turn.PileMoves[i].BubbleId, turn.PileMoves[i].ToSlotId);
+                    if (i > 0)
+                    {
+                        yield return Wait(stagger);
+                    }
+
+                    running.Add(StartCoroutine(MoveBubbleAlong(paths[i].Rect, paths[i].Origin, paths[i].Slots)));
                 }
             }
 
             if (turn.Spawns.Count > 0)
             {
+                if (running.Count > 0)
+                {
+                    yield return Wait(stagger);
+                }
+
                 _session.HoldForPresentation(GameState.SpawningTopBubble);
                 for (var i = 0; i < turn.Spawns.Count; i++)
                 {
-                    yield return SpawnBubble(turn.Spawns[i].BubbleId, turn.Spawns[i].SlotId);
+                    if (i > 0)
+                    {
+                        yield return Wait(stagger);
+                    }
+
+                    running.Add(StartCoroutine(SpawnBubble(turn.Spawns[i].BubbleId, turn.Spawns[i].SlotId)));
                 }
             }
+
+            for (var i = 0; i < running.Count; i++)
+            {
+                yield return running[i];
+            }
+        }
+
+        private sealed class PilePath
+        {
+            public RectTransform Rect;
+            public Vector2 Origin;
+            public readonly List<int> Slots = new List<int>();
+        }
+
+        /// <summary>
+        /// Applies every slot change in resolver order before any motion starts, so parallel tweens never
+        /// fight over slot ownership. Returns one path per bubble in first-move order (lower rows first).
+        /// </summary>
+        private List<PilePath> AdoptPileMoves(IReadOnlyList<BubblePileMove> moves)
+        {
+            var paths = new List<PilePath>();
+            var byId = new Dictionary<string, PilePath>();
+            var pile = _scene != null ? _scene.BubblePile : null;
+            if (pile == null)
+            {
+                return paths;
+            }
+
+            for (var i = 0; i < moves.Count; i++)
+            {
+                var move = moves[i];
+                if (!pile.TryGetByBubbleId(move.BubbleId, out var view) || view == null)
+                {
+                    continue;
+                }
+
+                if (!byId.TryGetValue(move.BubbleId, out var path))
+                {
+                    var rect = view.transform as RectTransform;
+                    path = new PilePath { Rect = rect, Origin = rect != null ? rect.anchoredPosition : Vector2.zero };
+                    byId.Add(move.BubbleId, path);
+                    paths.Add(path);
+                }
+
+                pile.AdoptSlot(view, move.ToSlotId);
+                path.Slots.Add(move.ToSlotId);
+            }
+
+            return paths;
+        }
+
+        private IEnumerator MoveBubbleAlong(RectTransform rect, Vector2 origin, List<int> slots)
+        {
+            var pile = _scene != null ? _scene.BubblePile : null;
+            if (rect == null || pile == null || slots == null)
+            {
+                yield break;
+            }
+
+            var from = origin;
+            var moved = false;
+            for (var hop = 0; hop < slots.Count; hop++)
+            {
+                if (!pile.TryGetSlotPosition(slots[hop], out var destination))
+                {
+                    continue;
+                }
+
+                var duration = Mathf.Abs(destination.x - from.x) > Mathf.Abs(destination.y - from.y)
+                    ? _tuning.BubbleSlideDuration
+                    : _tuning.BubbleFallDuration;
+                var elapsed = 0f;
+                while (elapsed < duration && rect != null)
+                {
+                    elapsed += Step();
+                    var sample = PresentationMotion.Sample(rect != null, elapsed, duration);
+                    rect.anchoredPosition = PresentationMotion.FallSlide(from, destination, sample.T, _tuning.BubblePathArc);
+                    if (sample.Completed)
+                    {
+                        break;
+                    }
+
+                    yield return null;
+                }
+
+                if (rect == null)
+                {
+                    yield break;
+                }
+
+                rect.anchoredPosition = destination;
+                from = destination;
+                moved = true;
+            }
+
+            if (moved && rect != null)
+            {
+                Sfx(SfxId.BubbleSettle);
+                yield return BounceRect(rect, _tuning.BubbleLandingBounceDuration);
+            }
+        }
+
+        private void StartLevelIntro()
+        {
+            FinishLevelIntro();
+            var pile = _scene != null ? _scene.BubblePile : null;
+            var duration = _tuning != null ? _tuning.LevelIntroDuration : 0f;
+            if (pile == null || duration <= 0f || !Application.isPlaying || !isActiveAndEnabled)
+            {
+                return;
+            }
+
+            _introBubbles.Clear();
+            var visible = pile.VisibleBubbles;
+            for (var i = 0; i < visible.Count; i++)
+            {
+                if (visible[i] != null && visible[i].transform is RectTransform)
+                {
+                    _introBubbles.Add(visible[i]);
+                }
+            }
+
+            if (_introBubbles.Count == 0)
+            {
+                return;
+            }
+
+            var drop = IntroDropDistance(pile);
+            PlaceIntroBubbles(pile, drop);
+            _introRoutine = StartCoroutine(PlayLevelIntro(pile, drop, duration));
+        }
+
+        /// <summary>One drop distance for the whole pile, large enough that the lowest bubble starts above the screen.</summary>
+        private float IntroDropDistance(BubblePileView pile)
+        {
+            var drop = _tuning.LevelIntroMinDrop;
+            var first = _introBubbles[0].transform as RectTransform;
+            var field = first != null ? first.parent as RectTransform : null;
+            var canvas = field != null ? field.GetComponentInParent<Canvas>() : null;
+            var root = canvas != null ? canvas.rootCanvas.transform as RectTransform : null;
+            if (field == null || root == null)
+            {
+                return drop;
+            }
+
+            var corners = new Vector3[4];
+            root.GetWorldCorners(corners);
+            var screenTop = field.InverseTransformPoint(corners[1]).y;
+            var lowest = float.MaxValue;
+            var tallest = 0f;
+            for (var i = 0; i < _introBubbles.Count; i++)
+            {
+                var rect = _introBubbles[i].transform as RectTransform;
+                if (rect == null || !pile.TryGetSlotPosition(_introBubbles[i].SlotId, out var slot))
+                {
+                    continue;
+                }
+
+                lowest = Mathf.Min(lowest, slot.y);
+                tallest = Mathf.Max(tallest, rect.rect.height);
+            }
+
+            if (lowest == float.MaxValue)
+            {
+                return drop;
+            }
+
+            return Mathf.Max(drop, screenTop - lowest + tallest);
+        }
+
+        private void PlaceIntroBubbles(BubblePileView pile, float drop)
+        {
+            for (var i = 0; i < _introBubbles.Count; i++)
+            {
+                var view = _introBubbles[i];
+                if (view == null || !(view.transform is RectTransform rect) || !pile.TryGetSlotPosition(view.SlotId, out var slot))
+                {
+                    continue;
+                }
+
+                rect.anchoredPosition = slot + new Vector2(0f, drop);
+            }
+        }
+
+        /// <summary>The whole pile drops in together, lands on the same frame and bounces once.</summary>
+        private IEnumerator PlayLevelIntro(BubblePileView pile, float drop, float duration)
+        {
+            var delay = _tuning.LevelIntroDelay;
+            var elapsed = 0f;
+            while (elapsed < delay)
+            {
+                elapsed += Step();
+                PlaceIntroBubbles(pile, drop);
+                yield return null;
+            }
+
+            Sfx(SfxId.TopSpawn);
+            elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Step();
+                var sample = PresentationMotion.Sample(pile != null, elapsed, duration);
+                PlaceIntroBubbles(pile, drop * (1f - PresentationMotion.EaseInQuad(sample.T)));
+                if (sample.Completed)
+                {
+                    break;
+                }
+
+                yield return null;
+            }
+
+            PlaceIntroBubbles(pile, 0f);
+            Sfx(SfxId.BubbleSettle);
+            var bounce = _tuning.BubbleLandingBounceDuration;
+            elapsed = 0f;
+            while (elapsed < bounce)
+            {
+                elapsed += Step();
+                var sample = PresentationMotion.Sample(true, elapsed, bounce);
+                SetIntroScale(PresentationMotion.BounceScale(sample.T, _tuning.LandingOvershoot));
+                if (sample.Completed)
+                {
+                    break;
+                }
+
+                yield return null;
+            }
+
+            SetIntroScale(Vector3.one);
+            _introBubbles.Clear();
+            _introRoutine = null;
+        }
+
+        private void SetIntroScale(Vector3 scale)
+        {
+            for (var i = 0; i < _introBubbles.Count; i++)
+            {
+                if (_introBubbles[i] != null)
+                {
+                    _introBubbles[i].transform.localScale = scale;
+                }
+            }
+        }
+
+        /// <summary>Stops the opening drop and puts every bubble on its slot at rest.</summary>
+        private void FinishLevelIntro()
+        {
+            if (_introRoutine == null)
+            {
+                return;
+            }
+
+            StopCoroutine(_introRoutine);
+            _introRoutine = null;
+            var pile = _scene != null ? _scene.BubblePile : null;
+            if (pile != null)
+            {
+                PlaceIntroBubbles(pile, 0f);
+            }
+
+            SetIntroScale(Vector3.one);
+            _introBubbles.Clear();
         }
 
         private IEnumerator PopBubble(string bubbleId)
@@ -1377,8 +1750,8 @@ namespace FishPuzzle.Core
                     return;
                 }
 
-                var lifetime = _tuning != null ? _tuning.BubbleBurstLifetime : 0.95f;
-                var count = _tuning != null ? _tuning.BubbleBurstCount : 11;
+                var lifetime = _tuning != null ? _tuning.BubbleBurstLifetime : 1.0f;
+                var count = _tuning != null ? _tuning.BubbleBurstCount : 32;
                 var emitted = _bursts.Emit(origin, smallSprite, popSprite, lifetime, count);
                 if (emitted > 0)
                 {
@@ -1407,48 +1780,6 @@ namespace FishPuzzle.Core
             if (_bursts.transform.parent != parent)
             {
                 _bursts.transform.SetParent(parent, false);
-            }
-        }
-
-        private IEnumerator MoveBubble(string bubbleId, int toSlotId)
-        {
-            var pile = _scene.BubblePile;
-            if (pile == null || !pile.TryGetByBubbleId(bubbleId, out var view) || view == null)
-            {
-                yield break;
-            }
-
-            var rect = view.transform as RectTransform;
-            if (rect == null || !pile.TryGetSlotPosition(toSlotId, out var destination))
-            {
-                pile.AdoptSlot(view, toSlotId);
-                yield break;
-            }
-
-            var origin = rect.anchoredPosition;
-            pile.AdoptSlot(view, toSlotId);
-            var duration = Mathf.Abs(destination.x - origin.x) > Mathf.Abs(destination.y - origin.y)
-                ? _tuning.BubbleSlideDuration
-                : _tuning.BubbleFallDuration;
-            var elapsed = 0f;
-            while (elapsed < duration && rect != null)
-            {
-                elapsed += Step();
-                var sample = PresentationMotion.Sample(rect != null, elapsed, duration);
-                rect.anchoredPosition = PresentationMotion.FallSlide(origin, destination, sample.T, _tuning.BubblePathArc);
-                if (sample.Completed)
-                {
-                    break;
-                }
-
-                yield return null;
-            }
-
-            if (rect != null)
-            {
-                rect.anchoredPosition = destination;
-                Sfx(SfxId.BubbleSettle);
-                yield return BounceRect(rect, _tuning.BubbleLandingBounceDuration);
             }
         }
 
@@ -1522,7 +1853,8 @@ namespace FishPuzzle.Core
             var elapsed = 0f;
             var toTray = !hop;
             var trailClock = 0f;
-            var trailInterval = TrailInterval(toTray);
+            var trailInterval = TrailInterval(toTray, 0f);
+            var trailFrom = start;
             MarkTrailSamples();
             EmitTrail(rect);
             while (elapsed < duration)
@@ -1532,17 +1864,11 @@ namespace FishPuzzle.Core
                 if (rect != null)
                 {
                     var sample = PresentationMotion.Sample(true, elapsed, seconds);
-                    var along = hop ? PresentationMotion.Hop(sample.T) : PresentationMotion.EaseOutQuad(sample.T);
+                    var along = hop ? PresentationMotion.RoutePace(sample.T) : PresentationMotion.EaseOutQuad(sample.T);
                     rect.position = PresentationMotion.QuadraticBezier(start, control, end, along);
                     if (!sample.Completed)
                     {
-                        trailClock += step;
-                        if (trailClock >= trailInterval)
-                        {
-                            trailClock = 0f;
-                            trailInterval = TrailInterval(toTray);
-                            EmitTrail(rect);
-                        }
+                        TickTrail(rect, toTray, step, sample.T, ref trailClock, ref trailInterval, ref trailFrom);
                     }
                 }
 
@@ -1591,7 +1917,8 @@ namespace FishPuzzle.Core
             var control = CurveControl(start, end, true);
             var elapsed = 0f;
             var trailClock = 0f;
-            var trailInterval = TrailInterval(false);
+            var trailInterval = TrailInterval(false, 0f);
+            var trailFrom = start;
             Sfx(SfxId.FishFly, 1f, 0.7f);
             MarkTrailSamples();
             EmitTrail(rect);
@@ -1600,20 +1927,13 @@ namespace FishPuzzle.Core
                 var step = Step();
                 elapsed += step;
                 var sample = PresentationMotion.Sample(rect != null, elapsed, seconds);
-                rect.position = PresentationMotion.QuadraticBezier(start, control, end, PresentationMotion.Hop(sample.T));
+                rect.position = PresentationMotion.QuadraticBezier(start, control, end, PresentationMotion.RoutePace(sample.T));
                 if (sample.Completed)
                 {
                     break;
                 }
 
-                trailClock += step;
-                if (trailClock >= trailInterval)
-                {
-                    trailClock = 0f;
-                    trailInterval = TrailInterval(false);
-                    EmitTrail(rect);
-                }
-
+                TickTrail(rect, false, step, sample.T, ref trailClock, ref trailInterval, ref trailFrom);
                 yield return null;
             }
 

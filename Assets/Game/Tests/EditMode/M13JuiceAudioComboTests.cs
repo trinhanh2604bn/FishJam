@@ -251,14 +251,14 @@ namespace FishPuzzle.Tests.EditMode
                     Assert.That(trail.NextInterval(true), Is.GreaterThan(FishTrailEmitter.MaxInterval), "Bubble → Tray uses fewer particles.");
                 }
 
-                Assert.That(FishTrailEmitter.MinLifetime, Is.EqualTo(0.30f));
-                Assert.That(FishTrailEmitter.MaxLifetime, Is.EqualTo(0.45f));
-                Assert.That(FishTrailEmitter.MinScale, Is.EqualTo(0.45f));
-                Assert.That(FishTrailEmitter.MaxScale, Is.EqualTo(0.9f));
+                Assert.That(FishTrailEmitter.MinLifetime, Is.EqualTo(0.7f));
+                Assert.That(FishTrailEmitter.MaxLifetime, Is.EqualTo(1.1f));
+                Assert.That(FishTrailEmitter.MinScale, Is.EqualTo(0.32f));
+                Assert.That(FishTrailEmitter.MaxScale, Is.EqualTo(1.0f));
                 Assert.That(FishTrailEmitter.MinAlpha, Is.EqualTo(0.35f));
-                Assert.That(FishTrailEmitter.MaxAlpha, Is.EqualTo(0.65f));
-                Assert.That(FishTrailEmitter.MinRise, Is.EqualTo(15f));
-                Assert.That(FishTrailEmitter.MaxRise, Is.EqualTo(35f));
+                Assert.That(FishTrailEmitter.MaxAlpha, Is.EqualTo(0.75f));
+                Assert.That(FishTrailEmitter.MinRise, Is.EqualTo(24f));
+                Assert.That(FishTrailEmitter.MaxRise, Is.EqualTo(60f));
             }
             finally
             {
@@ -289,12 +289,12 @@ namespace FishPuzzle.Tests.EditMode
                 Assert.That(trail.AllRaycastsDisabled(), Is.True);
                 var pooled = parent.GetComponentsInChildren<Image>(true).Length;
 
-                for (var i = 0; i < 20; i++)
+                for (var i = 0; i < 30; i++)
                 {
                     trail.Tick(0.05f);
                 }
 
-                Assert.That(trail.ActiveCount, Is.EqualTo(0), "Particles fade out within ~0.5 s.");
+                Assert.That(trail.ActiveCount, Is.EqualTo(0), "Particles fade out within ~1.1 s.");
                 Assert.That(trail.Burst(Vector3.zero, 7), Is.EqualTo(7), "Faded slots are reused.");
                 for (var i = 0; i < 30; i++)
                 {
