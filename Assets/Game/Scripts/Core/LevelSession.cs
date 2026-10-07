@@ -23,6 +23,8 @@ namespace FishPuzzle.Core
         private readonly List<TrayPromotionRecord> _promotions = new List<TrayPromotionRecord>();
         private readonly List<BubblePileMove> _pileMoves = new List<BubblePileMove>();
         private readonly List<BubbleSpawn> _spawns = new List<BubbleSpawn>();
+        private readonly List<IceProgressRecord> _iceUpdates = new List<IceProgressRecord>();
+        private readonly List<BubbleRuntimeState> _adjacent = new List<BubbleRuntimeState>();
         private BubblePileOccupancy _pile;
         private Action<GameState> _stateObserver;
         private Action<GameState> _outcomeHandler;
@@ -111,6 +113,7 @@ namespace FishPuzzle.Core
                 ids,
                 bubbles,
                 allBubblesInPlay);
+            session.ApplyAuthoredIce(queue);
             if (level.PileLayout != null)
             {
                 session.AttachPile(level.PileLayout);
@@ -288,6 +291,49 @@ namespace FishPuzzle.Core
             return _pile != null ? _pile.GetAtSlot(slotId) : null;
         }
 
+        public BubbleRuntimeState FindBubble(string bubbleId)
+        {
+            if (string.IsNullOrEmpty(bubbleId) || !_bubblesById.TryGetValue(bubbleId, out var bubble))
+            {
+                return null;
+            }
+
+            return bubble;
+        }
+
+        /// <summary>True while the fish sits inside a Frozen Bubble. Such fish reject press/select.</summary>
+        public bool IsFishFrozen(int fishId)
+        {
+            if (!_fishById.TryGetValue(fishId, out var fish) || fish == null || fish.State != FishState.Idle)
+            {
+                return false;
+            }
+
+            var bubble = FindBubble(fish.SourceBubbleId);
+            return bubble != null && bubble.IsFrozen && bubble.Contains(fish);
+        }
+
+        /// <summary>
+        /// Starts Frozen Bubbles from the authored definitions. Called once per attempt, so Retry and Next Level
+        /// always restore <see cref="BubbleDefinition.IceBreakRequiredSelections"/>.
+        /// </summary>
+        public void ApplyAuthoredIce(IReadOnlyList<BubbleDefinition> definitions)
+        {
+            if (definitions == null)
+            {
+                return;
+            }
+
+            for (var i = 0; i < definitions.Count && i < _bubbles.Count; i++)
+            {
+                var definition = definitions[i];
+                if (definition != null && definition.IsFrozen && _bubbles[i] != null)
+                {
+                    _bubbles[i].Freeze(definition.IceBreakRequiredSelections);
+                }
+            }
+        }
+
         public FishRuntimeState FindFirstIdleFish(FishType fishType)
         {
             for (var i = 0; i < _bubbles.Count; i++)
@@ -368,6 +414,11 @@ namespace FishPuzzle.Core
                 bubble.Remove(fish);
                 fish.BeginTransit();
                 result = CommitDestination(fish);
+                if (result.Outcome == FishSelectionOutcome.RoutedToTank)
+                {
+                    ChipAdjacentIce(bubble.BubbleId);
+                }
+
                 if (result.Accepted)
                 {
                     onCommitted?.Invoke(result);
@@ -406,7 +457,8 @@ namespace FishPuzzle.Core
                     _promotions.ToArray(),
                     _pileMoves.ToArray(),
                     _spawns.ToArray(),
-                    _state == GameState.Win);
+                    _state == GameState.Win,
+                    _iceUpdates.ToArray());
             }
         }
 
@@ -416,9 +468,42 @@ namespace FishPuzzle.Core
             _promotions.Clear();
             _pileMoves.Clear();
             _spawns.Clear();
+            _iceUpdates.Clear();
             _poppedBubble = false;
             _poppedBubbleId = string.Empty;
             _poppedSlotId = -1;
+        }
+
+        /// <summary>
+        /// A correct fish (routed to a tank) selected from <paramref name="sourceBubbleId"/> chips every Frozen Bubble in a
+        /// slot adjacent to the source slot right now. Fish sent to the Waiting Tray never chip ice. Runs before the source
+        /// bubble pops and the pile settles, so adjacency is the pile the player tapped. Routing itself is unchanged.
+        /// </summary>
+        private void ChipAdjacentIce(string sourceBubbleId)
+        {
+            if (_pile == null || !_pile.TryGetSlotOfBubble(sourceBubbleId, out var sourceSlot))
+            {
+                return;
+            }
+
+            _pile.CollectAdjacentOccupants(sourceSlot, _adjacent);
+            for (var i = 0; i < _adjacent.Count; i++)
+            {
+                var frozen = _adjacent[i];
+                if (frozen == null || frozen.BubbleId == sourceBubbleId || !frozen.TryChipIce())
+                {
+                    continue;
+                }
+
+                _pile.TryGetSlotOfBubble(frozen.BubbleId, out var frozenSlot);
+                _iceUpdates.Add(new IceProgressRecord(
+                    frozen.BubbleId,
+                    frozenSlot,
+                    frozen.IceSelectionsRemaining,
+                    frozen.IceBreakRequiredSelections));
+            }
+
+            _adjacent.Clear();
         }
 
         private FishSelectionResult CommitDestination(FishRuntimeState fish)

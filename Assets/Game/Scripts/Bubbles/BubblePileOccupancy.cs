@@ -120,6 +120,35 @@ namespace FishPuzzle.Bubbles
             return _slotByBubbleId.TryGetValue(bubbleId, out slotId);
         }
 
+        /// <summary>Bubbles currently occupying slots adjacent to <paramref name="slotId"/>, in layout order.</summary>
+        public void CollectAdjacentOccupants(int slotId, List<BubbleRuntimeState> destination)
+        {
+            if (destination == null)
+            {
+                return;
+            }
+
+            destination.Clear();
+            if (!_slotsById.TryGetValue(slotId, out var origin) || origin == null)
+            {
+                return;
+            }
+
+            for (var i = 0; i < _slots.Count; i++)
+            {
+                var slot = _slots[i];
+                if (slot == null
+                    || !_bySlot.TryGetValue(slot.SlotId, out var bubble)
+                    || bubble == null
+                    || !BubblePileAdjacency.AreAdjacent(origin, slot))
+                {
+                    continue;
+                }
+
+                destination.Add(bubble);
+            }
+        }
+
         public void Vacate(string bubbleId)
         {
             if (string.IsNullOrEmpty(bubbleId) || !_slotByBubbleId.TryGetValue(bubbleId, out var slotId))

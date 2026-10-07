@@ -23,10 +23,10 @@ namespace FishPuzzle.Tests.EditMode
             Assert.That(tuning.TankTargetSwapDuration, Is.InRange(0.10f, 0.14f));
             Assert.That(tuning.TrayAutoMoveDuration, Is.InRange(0.18f, 0.22f));
             Assert.That(tuning.BubbleFishReflowDuration, Is.InRange(0.13f, 0.16f));
-            Assert.That(tuning.BubblePopDuration, Is.InRange(0.05f, 0.10f));
-            Assert.That(tuning.BubbleFallDuration, Is.InRange(0.17f, 0.21f));
-            Assert.That(tuning.BubbleSlideDuration, Is.InRange(0.17f, 0.21f));
-            Assert.That(tuning.BubbleTopSpawnDuration, Is.InRange(0.22f, 0.27f));
+            Assert.That(tuning.BubblePopDuration, Is.InRange(0.10f, 0.16f));
+            Assert.That(tuning.BubbleFallDuration, Is.InRange(0.28f, 0.36f));
+            Assert.That(tuning.BubbleSlideDuration, Is.InRange(0.26f, 0.34f));
+            Assert.That(tuning.BubbleTopSpawnDuration, Is.InRange(0.30f, 0.38f));
             Assert.That(tuning.TouchRippleDuration, Is.InRange(0.30f, 0.45f));
             Assert.That(tuning.FishPressLift, Is.InRange(6f, 10f));
             Assert.That(tuning.FishPressScale, Is.InRange(1.04f, 1.07f));

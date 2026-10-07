@@ -11,6 +11,9 @@ namespace FishPuzzle.Domain
     /// </summary>
     public sealed class LevelValidator
     {
+        /// <summary>Smallest authored bubble. Fish-per-bubble maximum comes from GameConfig.MaxFishPerBubble.</summary>
+        public const int MinFishPerBubble = 2;
+
         public LevelValidationResult Validate(LevelData level, GameConfig config)
         {
             var issues = new List<LevelValidationIssue>();
@@ -168,6 +171,11 @@ namespace FishPuzzle.Domain
                 ValidatePile(level.PileLayout, levelId, issues);
             }
 
+            if (bubbles != null)
+            {
+                ValidateFrozenReachability(bubbles, level.PileLayout, levelId, issues);
+            }
+
             return new LevelValidationResult(issues);
         }
 
@@ -237,6 +245,19 @@ namespace FishPuzzle.Domain
                         bubble.BubbleId));
                 }
 
+                var standardContents = bubble.Modifier == BubbleModifier.None || bubble.Modifier == BubbleModifier.Frozen;
+                if (standardContents && fishes.Count < MinFishPerBubble)
+                {
+                    issues.Add(Error(
+                        LevelValidationCodes.BubbleFishCountBelowMin,
+                        DescribeBubble(bubble, i) + " contains " + fishes.Count
+                        + " fish; the minimum is " + MinFishPerBubble + ".",
+                        levelId,
+                        bubble.BubbleId));
+                }
+
+                ValidateIce(bubble, i, levelId, issues);
+
                 var distinct = new HashSet<FishType>();
                 for (var fishIndex = 0; fishIndex < fishes.Count; fishIndex++)
                 {
@@ -247,12 +268,14 @@ namespace FishPuzzle.Domain
                     totalFish++;
                 }
 
-                if (distinctValid && bubble.Modifier == BubbleModifier.None && distinct.Count != config.DistinctFishTypesPerBubble)
+                // 2-fish bubbles hold 2 distinct types; 3 to 5 fish hold exactly DistinctFishTypesPerBubble (3).
+                var requiredDistinct = Math.Min(config.DistinctFishTypesPerBubble, fishes.Count);
+                if (distinctValid && standardContents && distinct.Count != requiredDistinct)
                 {
                     issues.Add(Error(
                         LevelValidationCodes.BubbleDistinctTypeCount,
                         DescribeBubble(bubble, i) + " contains " + distinct.Count
-                        + " distinct FishTypes; expected exactly " + config.DistinctFishTypesPerBubble + ".",
+                        + " distinct FishTypes; expected exactly " + requiredDistinct + ".",
                         levelId,
                         bubble.BubbleId));
                 }
@@ -270,6 +293,117 @@ namespace FishPuzzle.Domain
                     "Bubble id " + pair.Key + " is used " + pair.Value + " times. Bubble ids must be unique within the level.",
                     levelId,
                     pair.Key));
+            }
+        }
+
+        private static void ValidateIce(BubbleDefinition bubble, int index, string levelId, List<LevelValidationIssue> issues)
+        {
+            if (bubble.IsFrozen && bubble.IceBreakRequiredSelections <= 0)
+            {
+                issues.Add(Error(
+                    LevelValidationCodes.BubbleFrozenRequirementInvalid,
+                    DescribeBubble(bubble, index) + " is Frozen with iceBreakRequiredSelections "
+                    + bubble.IceBreakRequiredSelections + ". A Frozen Bubble needs at least 1 adjacent selection to break.",
+                    levelId,
+                    bubble.BubbleId));
+            }
+            else if (!bubble.IsFrozen && bubble.IceBreakRequiredSelections > 0)
+            {
+                issues.Add(Error(
+                    LevelValidationCodes.BubbleIceOnNormalBubble,
+                    DescribeBubble(bubble, index) + " is not Frozen but has iceBreakRequiredSelections "
+                    + bubble.IceBreakRequiredSelections + ". Use 0, or set the modifier to Frozen.",
+                    levelId,
+                    bubble.BubbleId));
+            }
+        }
+
+        /// <summary>
+        /// Every Frozen Bubble must be breakable without relying on another Frozen Bubble.
+        /// A Frozen Bubble in the opening pile (queue index i starts in slot i) needs at least its counter in fish
+        /// from normal bubbles that start in adjacent slots, so it can always be opened from the first turn.
+        /// A queued Frozen Bubble must at least be coverable by every normal fish in the level.
+        /// </summary>
+        private static void ValidateFrozenReachability(
+            IReadOnlyList<BubbleDefinition> bubbles,
+            BubblePileLayout layout,
+            string levelId,
+            List<LevelValidationIssue> issues)
+        {
+            var slots = new Dictionary<int, BubblePileSlotDefinition>();
+            if (layout != null && layout.Slots != null)
+            {
+                for (var i = 0; i < layout.Slots.Count; i++)
+                {
+                    var slot = layout.Slots[i];
+                    if (slot != null && !slots.ContainsKey(slot.SlotId))
+                    {
+                        slots.Add(slot.SlotId, slot);
+                    }
+                }
+            }
+
+            var normalFish = 0;
+            for (var i = 0; i < bubbles.Count; i++)
+            {
+                if (bubbles[i] != null && !bubbles[i].IsFrozen && bubbles[i].Fishes != null)
+                {
+                    normalFish += bubbles[i].Fishes.Count;
+                }
+            }
+
+            for (var i = 0; i < bubbles.Count; i++)
+            {
+                var frozen = bubbles[i];
+                if (frozen == null || !frozen.IsFrozen || frozen.IceBreakRequiredSelections <= 0)
+                {
+                    continue;
+                }
+
+                var required = frozen.IceBreakRequiredSelections;
+                if (!slots.TryGetValue(i, out var frozenSlot))
+                {
+                    if (normalFish < required)
+                    {
+                        issues.Add(Error(
+                            LevelValidationCodes.FrozenBubbleUnreachable,
+                            DescribeBubble(frozen, i) + " needs " + required + " adjacent selections, but the level only has "
+                            + normalFish + " fish in normal bubbles.",
+                            levelId,
+                            frozen.BubbleId));
+                    }
+
+                    continue;
+                }
+
+                var adjacentFish = 0;
+                for (var j = 0; j < bubbles.Count; j++)
+                {
+                    var neighbour = bubbles[j];
+                    if (j == i
+                        || neighbour == null
+                        || neighbour.IsFrozen
+                        || neighbour.Fishes == null
+                        || !slots.TryGetValue(j, out var neighbourSlot)
+                        || !BubblePileAdjacency.AreAdjacent(frozenSlot, neighbourSlot))
+                    {
+                        continue;
+                    }
+
+                    adjacentFish += neighbour.Fishes.Count;
+                }
+
+                if (adjacentFish < required)
+                {
+                    issues.Add(Error(
+                        LevelValidationCodes.FrozenBubbleUnreachable,
+                        DescribeBubble(frozen, i) + " starts in slot " + i + " and needs " + required
+                        + " adjacent selections, but adjacent normal bubbles only hold " + adjacentFish
+                        + " fish. Lower the counter or move it next to more normal bubbles.",
+                        levelId,
+                        frozen.BubbleId,
+                        i));
+                }
             }
         }
 

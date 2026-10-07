@@ -19,7 +19,7 @@ namespace FishPuzzle.Tests.EditMode
             var tuning = AssetDatabase.LoadAssetAtPath<AnimationTuning>(TuningPath);
 
             Assert.That(tuning, Is.Not.Null);
-            Assert.That(tuning.BubblePopDuration, Is.InRange(0.05f, 0.10f));
+            Assert.That(tuning.BubblePopDuration, Is.InRange(0.10f, 0.16f));
             Assert.That(tuning.BubblePopDuration, Is.LessThan(0.20f));
             Assert.That(tuning.BubbleBurstLifetime, Is.InRange(BubbleBurstPool.MinLifetime, BubbleBurstPool.MaxLifetime));
             Assert.That(tuning.BubbleBurstCount, Is.InRange(BubbleBurstPool.MinCount, BubbleBurstPool.MaxCount));

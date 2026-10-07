@@ -34,6 +34,10 @@ namespace FishPuzzle.Domain
         public const string BubbleFishesEmpty = "BUBBLE_FISHES_EMPTY";
         public const string BubbleDistinctTypeCount = "BUBBLE_DISTINCT_TYPE_COUNT";
         public const string BubbleFishCountAboveMax = "BUBBLE_FISH_COUNT_ABOVE_MAX";
+        public const string BubbleFishCountBelowMin = "BUBBLE_FISH_COUNT_BELOW_MIN";
+        public const string BubbleFrozenRequirementInvalid = "BUBBLE_FROZEN_REQUIREMENT_INVALID";
+        public const string BubbleIceOnNormalBubble = "BUBBLE_ICE_ON_NORMAL_BUBBLE";
+        public const string FrozenBubbleUnreachable = "FROZEN_BUBBLE_UNREACHABLE";
         public const string PileSlotsNull = "PILE_SLOTS_NULL";
         public const string PileNoSlots = "PILE_NO_SLOTS";
         public const string PileSlotNull = "PILE_SLOT_NULL";

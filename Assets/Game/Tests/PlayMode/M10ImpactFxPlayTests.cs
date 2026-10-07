@@ -45,7 +45,7 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(runtime.HasPopped, Is.True);
             Assert.That(flow.ActiveBubbleBurstCount, Is.GreaterThanOrEqualTo(BubbleBurstPool.MinCount));
             Assert.That(flow.ActiveBubbleBurstCount, Is.LessThanOrEqualTo(BubbleBurstPool.HardPoolCap));
-            Assert.That(flow.LastBubblePopSeconds, Is.InRange(0.05f, 0.10f));
+            Assert.That(flow.LastBubblePopSeconds, Is.InRange(0.10f, 0.16f));
             AssertShellIgnored(bubbleId);
 
             var sawSettleWithBurst = false;

@@ -13,9 +13,9 @@ namespace FishPuzzle.Tests.PlayMode
 {
     public sealed class M11LevelFlowPlayTests
     {
-        private static readonly int[] Totals = { 9, 15, 21, 36, 60, 75 };
-        private static readonly int[] BubbleCounts = { 3, 5, 6, 9, 12, 15 };
-        private const int LevelCount = 6;
+        private static readonly int[] Totals = { 9, 15, 21, 36, 60, 51, 57, 60, 66, 75 };
+        private static readonly int[] BubbleCounts = { 3, 5, 6, 9, 12, 12, 13, 14, 15, 17 };
+        private const int LevelCount = 10;
         private const int PileSlots = 10;
 
         [UnitySetUp]
@@ -173,7 +173,7 @@ namespace FishPuzzle.Tests.PlayMode
 
         [UnityTest]
         [Timeout(900000)]
-        public IEnumerator FullSequence_Level001ToLevel006_ThenPlayAgain()
+        public IEnumerator FullSequence_Level001ToLevel010_ThenPlayAgain()
         {
             var bootstrap = Bootstrap();
             var started = Time.realtimeSinceStartup;
@@ -199,8 +199,8 @@ namespace FishPuzzle.Tests.PlayMode
                 }
             }
 
-            Debug.Log("[M11] Level_001..Level_006 automated play seconds " + (Time.realtimeSinceStartup - started).ToString("0.0"));
-            Assert.That(bootstrap.LevelId, Is.EqualTo("level_006"));
+            Debug.Log("[M11] Level_001..Level_010 automated play seconds " + (Time.realtimeSinceStartup - started).ToString("0.0"));
+            Assert.That(bootstrap.LevelId, Is.EqualTo("level_010"));
             Assert.That(bootstrap.HasNextLevel, Is.False);
             var last = Flow().WinPanel;
             Assert.That(last.HasNextLevel, Is.False);
@@ -208,7 +208,7 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(last.PrimaryButtonText, Is.EqualTo(WinPanelView.ClaimText));
             Assert.That(last.ProgressText, Is.EqualTo(LevelCount + "/" + LevelCount));
             Assert.That(last.ProgressFraction, Is.EqualTo(1f));
-            Assert.That(bootstrap.RequestNextLevel(), Is.False, "Level_006 has no next level.");
+            Assert.That(bootstrap.RequestNextLevel(), Is.False, "Level_010 has no next level.");
             Assert.That(bootstrap.CurrentLevelIndex, Is.EqualTo(LevelCount - 1));
             Assert.That(Count<WinPanelView>(), Is.EqualTo(1));
 
@@ -433,7 +433,7 @@ namespace FishPuzzle.Tests.PlayMode
         {
             var number = index + 1;
             Assert.That(bootstrap.CurrentLevelIndex, Is.EqualTo(index));
-            Assert.That(bootstrap.LevelId, Is.EqualTo("level_00" + number));
+            Assert.That(bootstrap.LevelId, Is.EqualTo("level_" + number.ToString("000")));
             Assert.That(bootstrap.LevelLabel, Is.EqualTo("Màn " + number));
             Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
             Assert.That(flow.IsWinPanelVisible, Is.False);

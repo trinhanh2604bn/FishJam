@@ -12,7 +12,7 @@ using UnityEngine;
 namespace FishPuzzle.Tests.EditMode
 {
     /// <summary>
-    /// M11 / M11.3: six onboarding levels (max 5 fish per bubble) in one Gameplay scene, Win/Lose flow, fixed 124 fish size.
+    /// M11 / M11.3 / M15: ten levels (2 to 5 fish per bubble, Frozen Bubbles from Level 6) in one Gameplay scene, Win/Lose flow, fixed 124 fish size.
     /// </summary>
     public sealed class M11MultiLevelTests
     {
@@ -21,16 +21,22 @@ namespace FishPuzzle.Tests.EditMode
         private const string FishCatalogPath = "Assets/Game/Data/Config/FishVisualCatalog.asset";
         private const string LayoutPath = "Assets/Game/Data/BubblePileLayouts/BPL_Standard_10.asset";
 
-        private static readonly int[] Totals = { 9, 15, 21, 36, 60, 75 };
-        private static readonly int[] BubbleCounts = { 3, 5, 6, 9, 12, 15 };
-        private static readonly int[] TypeCounts = { 3, 5, 7, 9, 11, 11 };
+        private const int LevelCount = 10;
+        private static readonly int[] Totals = { 9, 15, 21, 36, 60, 51, 57, 60, 66, 75 };
+        private static readonly int[] BubbleCounts = { 3, 5, 6, 9, 12, 12, 13, 14, 15, 17 };
+        private static readonly int[] TypeCounts = { 3, 5, 7, 9, 11, 11, 11, 11, 11, 11 };
+        private static readonly int[] FrozenCounts = { 0, 0, 0, 0, 0, 1, 2, 2, 3, 4 };
 
         [TestCase(1, 9, 3)]
         [TestCase(2, 15, 5)]
         [TestCase(3, 21, 6)]
         [TestCase(4, 36, 9)]
         [TestCase(5, 60, 12)]
-        [TestCase(6, 75, 15)]
+        [TestCase(6, 51, 12)]
+        [TestCase(7, 57, 13)]
+        [TestCase(8, 60, 14)]
+        [TestCase(9, 66, 15)]
+        [TestCase(10, 75, 17)]
         public void Level_IsValid_WithExactTotalAndBubbleCount(int number, int expectedTotal, int expectedBubbles)
         {
             var level = Level(number);
@@ -38,7 +44,7 @@ namespace FishPuzzle.Tests.EditMode
 
             Assert.That(result.IsValid, Is.True, Describe(result));
             Assert.That(result.Issues, Is.Empty);
-            Assert.That(level.LevelId, Is.EqualTo("level_00" + number));
+            Assert.That(level.LevelId, Is.EqualTo("level_" + number.ToString("000")));
             Assert.That(level.InitialUnlockedTankCount, Is.EqualTo(2));
             Assert.That(level.TotalFishRequired, Is.EqualTo(expectedTotal));
             Assert.That(level.TargetGroupQueue.Count * Config().TankCapacity, Is.EqualTo(expectedTotal));
@@ -50,24 +56,33 @@ namespace FishPuzzle.Tests.EditMode
         [Test]
         public void Progression_GetsDenserLevelByLevel()
         {
+            // L1-L5 onboard fish types. L6 introduces Frozen Bubbles with a small dip in fish, then
+            // L6-L10 grow through more bubbles, more fish, and more Frozen Bubbles. L10 is the largest level.
             var total = 0;
-            for (var number = 1; number <= 6; number++)
+            for (var number = 1; number <= LevelCount; number++)
             {
                 var level = Level(number);
                 total += level.TotalFishRequired;
                 Assert.That(level.BubbleQueue.Count, Is.EqualTo(BubbleCounts[number - 1]));
                 Assert.That(level.TotalFishRequired, Is.EqualTo(Totals[number - 1]));
                 Assert.That(DistinctTypes(level), Is.EqualTo(TypeCounts[number - 1]));
-                if (number > 1)
+                Assert.That(FrozenBubbles(level), Is.EqualTo(FrozenCounts[number - 1]), level.LevelId);
+                if (number > 1 && number != 6)
                 {
                     var previous = Level(number - 1);
                     Assert.That(level.BubbleQueue.Count, Is.GreaterThan(previous.BubbleQueue.Count));
                     Assert.That(level.TotalFishRequired, Is.GreaterThan(previous.TotalFishRequired));
                     Assert.That(DistinctTypes(level), Is.GreaterThanOrEqualTo(DistinctTypes(previous)));
+                    Assert.That(FrozenBubbles(level), Is.GreaterThanOrEqualTo(FrozenBubbles(previous)));
+                }
+
+                if (number < LevelCount)
+                {
+                    Assert.That(level.TotalFishRequired, Is.LessThan(Level(LevelCount).TotalFishRequired));
                 }
             }
 
-            Assert.That(total, Is.EqualTo(216));
+            Assert.That(total, Is.EqualTo(450));
         }
 
         [TestCase(1, 3, 3)]
@@ -75,7 +90,11 @@ namespace FishPuzzle.Tests.EditMode
         [TestCase(3, 3, 4)]
         [TestCase(4, 4, 4)]
         [TestCase(5, 5, 5)]
-        [TestCase(6, 5, 5)]
+        [TestCase(6, 2, 5)]
+        [TestCase(7, 2, 5)]
+        [TestCase(8, 2, 5)]
+        [TestCase(9, 2, 5)]
+        [TestCase(10, 2, 5)]
         public void Level_BubbleSizes_AndExactlyThreeDistinctTypes(int number, int minFish, int maxFish)
         {
             var level = Level(number);
@@ -85,9 +104,9 @@ namespace FishPuzzle.Tests.EditMode
                 var bubble = level.BubbleQueue[i];
                 Assert.That(bubble.Fishes.Count, Is.InRange(minFish, maxFish), bubble.BubbleId);
                 Assert.That(bubble.Fishes.Count, Is.LessThanOrEqualTo(Config().MaxFishPerBubble), bubble.BubbleId);
-                Assert.That(new HashSet<FishType>(bubble.Fishes).Count, Is.EqualTo(3), bubble.BubbleId);
-                Assert.That(bubble.Modifier, Is.EqualTo(BubbleModifier.None), bubble.BubbleId);
-                Assert.That(bubble.BubbleId, Is.EqualTo("L00" + number + "_B" + (i + 1).ToString("000")));
+                Assert.That(new HashSet<FishType>(bubble.Fishes).Count, Is.EqualTo(Mathf.Min(3, bubble.Fishes.Count)), bubble.BubbleId);
+                Assert.That(bubble.Modifier, number < 6 ? Is.EqualTo(BubbleModifier.None) : Is.EqualTo(BubbleModifier.None).Or.EqualTo(BubbleModifier.Frozen), bubble.BubbleId);
+                Assert.That(bubble.BubbleId, Is.EqualTo("L" + number.ToString("000") + "_B" + (i + 1).ToString("000")));
                 Assert.That(ids.Add(bubble.BubbleId), Is.True);
                 Assert.That(bubble.Fishes, Has.No.Member(FishType.Crab));
                 Assert.That(bubble.Fishes, Has.No.Member(FishType.Snail));
@@ -111,7 +130,6 @@ namespace FishPuzzle.Tests.EditMode
         }
 
         [TestCase(5)]
-        [TestCase(6)]
         public void FiveFishLevels_UseVariedCompositions(int number)
         {
             var level = Level(number);
@@ -149,7 +167,8 @@ namespace FishPuzzle.Tests.EditMode
             var slots = Level(1).PileLayout.Slots.Count;
             Assert.That(slots, Is.EqualTo(10));
             Assert.That(Level(5).BubbleQueue.Count - slots, Is.EqualTo(2));
-            Assert.That(Level(6).BubbleQueue.Count - slots, Is.EqualTo(5));
+            Assert.That(Level(6).BubbleQueue.Count - slots, Is.EqualTo(2));
+            Assert.That(Level(10).BubbleQueue.Count - slots, Is.EqualTo(7));
         }
 
         [Test]
@@ -202,7 +221,7 @@ namespace FishPuzzle.Tests.EditMode
         [Test]
         public void Validator_AcceptsExactlyFiveFish()
         {
-            for (var number = 5; number <= 6; number++)
+            for (var number = 5; number <= LevelCount; number++)
             {
                 var result = new LevelValidator().Validate(Level(number), Config());
                 Assert.That(result.IsValid, Is.True, Describe(result));
@@ -330,29 +349,34 @@ namespace FishPuzzle.Tests.EditMode
             var level = Level(6);
             AssertSequence(
                 level.TargetGroupQueue,
-                FishType.Orange, FishType.GreenStriped, FishType.RedClown, FishType.PinkStriped, FishType.BlackStriped, FishType.Yellow, FishType.GreySpotted, FishType.Pink, FishType.Blue, FishType.Koi, FishType.YellowBlack, FishType.Orange, FishType.GreenStriped, FishType.RedClown, FishType.PinkStriped, FishType.BlackStriped, FishType.Yellow, FishType.GreySpotted, FishType.Pink, FishType.Blue, FishType.Koi, FishType.YellowBlack, FishType.Orange, FishType.GreenStriped, FishType.RedClown);
-            Assert.That(level.BubbleQueue.Count, Is.EqualTo(15));
-            AssertSequence(level.BubbleQueue[0].Fishes, FishType.GreySpotted, FishType.GreySpotted, FishType.YellowBlack, FishType.YellowBlack, FishType.BlackStriped);
-            AssertSequence(level.BubbleQueue[1].Fishes, FishType.Orange, FishType.Orange, FishType.Yellow, FishType.Yellow, FishType.PinkStriped);
-            AssertSequence(level.BubbleQueue[2].Fishes, FishType.RedClown, FishType.RedClown, FishType.Blue, FishType.Blue, FishType.Koi);
-            AssertSequence(level.BubbleQueue[3].Fishes, FishType.Orange, FishType.Orange, FishType.BlackStriped, FishType.BlackStriped, FishType.RedClown);
-            AssertSequence(level.BubbleQueue[4].Fishes, FishType.Orange, FishType.Orange, FishType.Pink, FishType.Pink, FishType.PinkStriped);
-            AssertSequence(level.BubbleQueue[5].Fishes, FishType.Orange, FishType.Orange, FishType.Koi, FishType.Koi, FishType.RedClown);
-            AssertSequence(level.BubbleQueue[6].Fishes, FishType.GreenStriped, FishType.GreenStriped, FishType.GreenStriped, FishType.BlackStriped, FishType.Yellow);
-            AssertSequence(level.BubbleQueue[7].Fishes, FishType.GreenStriped, FishType.GreenStriped, FishType.PinkStriped, FishType.PinkStriped, FishType.YellowBlack);
-            AssertSequence(level.BubbleQueue[8].Fishes, FishType.Pink, FishType.Pink, FishType.Blue, FishType.Blue, FishType.RedClown);
-            AssertSequence(level.BubbleQueue[9].Fishes, FishType.PinkStriped, FishType.PinkStriped, FishType.Blue, FishType.Blue, FishType.Orange);
-            AssertSequence(level.BubbleQueue[10].Fishes, FishType.GreenStriped, FishType.GreenStriped, FishType.Pink, FishType.Pink, FishType.BlackStriped);
-            AssertSequence(level.BubbleQueue[11].Fishes, FishType.GreySpotted, FishType.GreySpotted, FishType.Koi, FishType.Koi, FishType.GreenStriped);
-            AssertSequence(level.BubbleQueue[12].Fishes, FishType.Yellow, FishType.Yellow, FishType.Yellow, FishType.RedClown, FishType.GreySpotted);
-            AssertSequence(level.BubbleQueue[13].Fishes, FishType.YellowBlack, FishType.YellowBlack, FishType.YellowBlack, FishType.GreenStriped, FishType.Koi);
-            AssertSequence(level.BubbleQueue[14].Fishes, FishType.RedClown, FishType.RedClown, FishType.RedClown, FishType.BlackStriped, FishType.GreySpotted);
+                FishType.Pink, FishType.BlackStriped, FishType.Orange, FishType.Yellow, FishType.PinkStriped, FishType.YellowBlack, FishType.RedClown, FishType.Koi, FishType.Blue, FishType.GreySpotted, FishType.GreenStriped, FishType.PinkStriped, FishType.RedClown, FishType.GreenStriped, FishType.BlackStriped, FishType.Orange, FishType.Yellow);
+            Assert.That(level.BubbleQueue.Count, Is.EqualTo(12));
+            AssertSequence(level.BubbleQueue[0].Fishes, FishType.GreySpotted, FishType.GreySpotted, FishType.BlackStriped, FishType.BlackStriped, FishType.Pink);
+            AssertSequence(level.BubbleQueue[1].Fishes, FishType.GreenStriped, FishType.GreenStriped, FishType.Yellow, FishType.Yellow, FishType.Orange);
+            AssertSequence(level.BubbleQueue[2].Fishes, FishType.PinkStriped, FishType.PinkStriped, FishType.Pink, FishType.GreenStriped);
+            AssertSequence(level.BubbleQueue[3].Fishes, FishType.Yellow, FishType.Blue);
+            AssertSequence(level.BubbleQueue[4].Fishes, FishType.RedClown, FishType.RedClown, FishType.RedClown, FishType.BlackStriped, FishType.GreenStriped);
+            AssertSequence(level.BubbleQueue[5].Fishes, FishType.RedClown, FishType.RedClown, FishType.Orange, FishType.Orange, FishType.GreySpotted);
+            AssertSequence(level.BubbleQueue[6].Fishes, FishType.PinkStriped, FishType.PinkStriped, FishType.RedClown, FishType.Blue);
+            AssertSequence(level.BubbleQueue[7].Fishes, FishType.PinkStriped, FishType.PinkStriped, FishType.Koi, FishType.Pink);
+            AssertSequence(level.BubbleQueue[8].Fishes, FishType.Koi, FishType.Yellow, FishType.GreenStriped);
+            AssertSequence(level.BubbleQueue[9].Fishes, FishType.Yellow, FishType.Yellow, FishType.YellowBlack, FishType.Koi);
+            AssertSequence(level.BubbleQueue[10].Fishes, FishType.Orange, FishType.Orange, FishType.YellowBlack, FishType.YellowBlack, FishType.Blue);
+            AssertSequence(level.BubbleQueue[11].Fishes, FishType.BlackStriped, FishType.BlackStriped, FishType.BlackStriped, FishType.Orange, FishType.GreenStriped);
+
+            // Frozen Bubble tutorial: one bubble in the middle of row 1 (six neighbours), counter 2.
+            for (var i = 0; i < level.BubbleQueue.Count; i++)
+            {
+                var bubble = level.BubbleQueue[i];
+                Assert.That(bubble.IsFrozen, Is.EqualTo(i == 3), bubble.BubbleId);
+                Assert.That(bubble.IceBreakRequiredSelections, Is.EqualTo(i == 3 ? 2 : 0), bubble.BubbleId);
+            }
         }
 
         [Test]
         public void Level006_Population_11Types()
         {
-            AssertPopulation(Level(6), (FishType.Orange, 9), (FishType.GreenStriped, 9), (FishType.RedClown, 9), (FishType.PinkStriped, 6), (FishType.BlackStriped, 6), (FishType.Yellow, 6), (FishType.GreySpotted, 6), (FishType.Pink, 6), (FishType.Blue, 6), (FishType.Koi, 6), (FishType.YellowBlack, 6));
+            AssertPopulation(Level(6), (FishType.Orange, 6), (FishType.GreenStriped, 6), (FishType.RedClown, 6), (FishType.PinkStriped, 6), (FishType.BlackStriped, 6), (FishType.Yellow, 6), (FishType.GreySpotted, 3), (FishType.Pink, 3), (FishType.Blue, 3), (FishType.Koi, 3), (FishType.YellowBlack, 3));
         }
 
         [Test]
@@ -360,7 +384,7 @@ namespace FishPuzzle.Tests.EditMode
         {
             var catalog = AssetDatabase.LoadAssetAtPath<FishVisualCatalog>(FishCatalogPath);
             Assert.That(catalog, Is.Not.Null, FishCatalogPath);
-            for (var number = 1; number <= 6; number++)
+            for (var number = 1; number <= LevelCount; number++)
             {
                 var level = Level(number);
                 for (var i = 0; i < level.BubbleQueue.Count; i++)
@@ -375,38 +399,38 @@ namespace FishPuzzle.Tests.EditMode
         }
 
         [Test]
-        public void LevelCatalog_OrderIsLevel001To006()
+        public void LevelCatalog_OrderIsLevel001To010()
         {
             var catalog = Catalog();
-            Assert.That(catalog.Count, Is.EqualTo(6));
-            for (var i = 0; i < 6; i++)
+            Assert.That(catalog.Count, Is.EqualTo(LevelCount));
+            for (var i = 0; i < LevelCount; i++)
             {
                 Assert.That(catalog.Get(i), Is.SameAs(Level(i + 1)), "Catalog index " + i);
                 Assert.That(catalog.IndexOf(Level(i + 1)), Is.EqualTo(i));
             }
 
-            Assert.That(catalog.Get(6), Is.Null);
+            Assert.That(catalog.Get(LevelCount), Is.Null);
             Assert.That(catalog.Get(-1), Is.Null);
         }
 
         [Test]
-        public void LevelSequence_AdvancesInOrder_AndStopsAtLevel006()
+        public void LevelSequence_AdvancesInOrder_AndStopsAtLevel010()
         {
             var sequence = new LevelSequence(Catalog().Levels);
-            Assert.That(sequence.Count, Is.EqualTo(6));
+            Assert.That(sequence.Count, Is.EqualTo(LevelCount));
             Assert.That(sequence.Current.LevelId, Is.EqualTo("level_001"));
-            for (var expected = 2; expected <= 6; expected++)
+            for (var expected = 2; expected <= LevelCount; expected++)
             {
                 Assert.That(sequence.HasNext, Is.True);
-                Assert.That(sequence.PeekNext().LevelId, Is.EqualTo("level_00" + expected));
+                Assert.That(sequence.PeekNext().LevelId, Is.EqualTo("level_" + expected.ToString("000")));
                 Assert.That(sequence.TryAdvance(), Is.True);
                 Assert.That(sequence.CurrentNumber, Is.EqualTo(expected));
             }
 
             Assert.That(sequence.IsLast, Is.True);
             Assert.That(sequence.PeekNext(), Is.Null);
-            Assert.That(sequence.TryAdvance(), Is.False, "Level_006 has no next level.");
-            Assert.That(sequence.Current.LevelId, Is.EqualTo("level_006"));
+            Assert.That(sequence.TryAdvance(), Is.False, "Level_010 has no next level.");
+            Assert.That(sequence.Current.LevelId, Is.EqualTo("level_010"));
             sequence.Restart();
             Assert.That(sequence.Current.LevelId, Is.EqualTo("level_001"));
         }
@@ -514,13 +538,13 @@ namespace FishPuzzle.Tests.EditMode
         }
 
         [Test]
-        public void FullSequence_Level001ToLevel006_CanComplete()
+        public void FullSequence_Level001ToLevel010_CanComplete()
         {
             var config = Config();
             var sequence = new LevelSequence(Catalog().Levels);
             var progression = new ProgressionRuntime(PlayerProgress.CreateDevelopmentDefaults());
             var taps = 0;
-            for (var i = 0; i < 6; i++)
+            for (var i = 0; i < LevelCount; i++)
             {
                 Assert.That(sequence.CurrentIndex, Is.EqualTo(i));
                 progression.BeginAttempt();
@@ -537,11 +561,11 @@ namespace FishPuzzle.Tests.EditMode
                 Assert.That(session.Targets.NextUnassignedIndex, Is.EqualTo(session.Targets.Count));
                 Assert.That(progression.Progress.Gold, Is.EqualTo(1000 + (20 * (i + 1))));
                 Assert.That(progression.Progress.Lives, Is.EqualTo(5));
-                Assert.That(sequence.TryAdvance(), Is.EqualTo(i < 5));
+                Assert.That(sequence.TryAdvance(), Is.EqualTo(i < LevelCount - 1));
             }
 
-            Assert.That(sequence.Current.LevelId, Is.EqualTo("level_006"));
-            Assert.That(taps, Is.EqualTo(216));
+            Assert.That(sequence.Current.LevelId, Is.EqualTo("level_010"));
+            Assert.That(taps, Is.EqualTo(450));
         }
 
         [Test]
@@ -551,7 +575,7 @@ namespace FishPuzzle.Tests.EditMode
             // Matching fish first (4 tie-break orders); when nothing matches, the fallback picks the
             // fish whose type is needed soonest. Every run must win without overflowing the tray.
             var config = Config();
-            for (var number = 1; number <= 6; number++)
+            for (var number = 1; number <= LevelCount; number++)
             {
                 for (var variant = 0; variant < 4; variant++)
                 {
@@ -775,7 +799,7 @@ namespace FishPuzzle.Tests.EditMode
 
         private static LevelData FindLevel(LevelSession session)
         {
-            for (var number = 1; number <= 6; number++)
+            for (var number = 1; number <= LevelCount; number++)
             {
                 var level = Level(number);
                 if (level.TotalFishRequired == session.Progress.TotalFishRequired && level.BubbleQueue.Count == session.Bubbles.Count)
@@ -869,6 +893,17 @@ namespace FishPuzzle.Tests.EditMode
             return total;
         }
 
+        private static int FrozenBubbles(LevelData level)
+        {
+            var count = 0;
+            for (var i = 0; i < level.BubbleQueue.Count; i++)
+            {
+                count += level.BubbleQueue[i].IsFrozen ? 1 : 0;
+            }
+
+            return count;
+        }
+
         private static int DistinctTypes(LevelData level)
         {
             var types = new HashSet<FishType>();
@@ -901,7 +936,7 @@ namespace FishPuzzle.Tests.EditMode
 
         private static LevelData Level(int number)
         {
-            var path = "Assets/Game/Data/Levels/Level_00" + number + ".asset";
+            var path = "Assets/Game/Data/Levels/Level_" + number.ToString("000") + ".asset";
             var level = AssetDatabase.LoadAssetAtPath<LevelData>(path);
             Assert.That(level, Is.Not.Null, path);
             return level;

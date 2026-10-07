@@ -18,7 +18,24 @@ namespace FishPuzzle.Presentation
         private readonly List<BubbleView> _visible = new List<BubbleView>();
         private readonly List<BubbleDefinition> _queue = new List<BubbleDefinition>();
 
+        /// <summary>Vertical distance between rows as a fraction of the pitch: sqrt(3)/2 for touching marbles.</summary>
+        public const float RowPitchRatio = 0.8660254f;
+
+        /// <summary>Visible bubble diameter over the pitch. Slightly above 1 so packed bubbles squeeze together.</summary>
+        public const float MarbleSqueeze = 1.04f;
+
+        private const float SideMargin = 6f;
+        private const float BottomMargin = 4f;
+        private const float TopMargin = 0f;
+        private const float MinContentScale = 0.6f;
+        private const float MaxContentScale = 1.6f;
+
         private BubblePileLayout _layout;
+        private bool _packed;
+        private float _pitch;
+        private readonly Dictionary<int, int> _rowCounts = new Dictionary<int, int>();
+        private int _minRow;
+        private Vector2 _origin;
         private Vector2 _appliedFieldSize;
         private GameObject _bubblePrefab;
         private GameObject _fishPrefab;
@@ -48,6 +65,7 @@ namespace FishPuzzle.Presentation
             }
 
             _appliedFieldSize = size;
+            ComputePacking();
             foreach (var pair in _viewsBySlot)
             {
                 if (pair.Value == null || !TryFindSlot(_layout, pair.Key, out var slot) || slot == null)
@@ -58,10 +76,15 @@ namespace FishPuzzle.Presentation
                 var rect = pair.Value.GetComponent<RectTransform>();
                 if (rect != null)
                 {
-                    rect.anchoredPosition = MapToField(slot.AnchoredPosition);
+                    rect.anchoredPosition = MapToField(slot);
                 }
+
+                pair.Value.SetContentScale(ContentScale);
             }
         }
+
+        /// <summary>Whole-bubble scale from marble packing (1 before the field has a usable size).</summary>
+        public float ContentScale { get; private set; } = 1f;
 
         public int VisibleBubbleCount => _visible.Count;
 
@@ -107,6 +130,7 @@ namespace FishPuzzle.Presentation
             }
 
             Canvas.ForceUpdateCanvases();
+            ComputePacking();
 
             var placed = 0;
             for (var index = 0; index < queue.Count; index++)
@@ -119,7 +143,7 @@ namespace FishPuzzle.Presentation
                 var definition = queue[index];
                 var instance = Instantiate(bubblePrefab, _slotRoot);
                 instance.name = "Bubble_" + (definition != null ? definition.BubbleId : index.ToString());
-                PrepareRect(instance.GetComponent<RectTransform>(), MapToField(slot.AnchoredPosition));
+                PrepareRect(instance.GetComponent<RectTransform>(), MapToField(slot));
 
                 var view = instance.GetComponent<BubbleView>();
                 if (view == null)
@@ -129,6 +153,7 @@ namespace FishPuzzle.Presentation
                 }
 
                 view.Bind(definition, slot.SlotId, fishCatalog, fishPrefab);
+                view.SetContentScale(ContentScale);
                 _viewsBySlot[slot.SlotId] = view;
                 _visible.Add(view);
                 placed++;
@@ -216,7 +241,7 @@ namespace FishPuzzle.Presentation
                 return false;
             }
 
-            anchoredPosition = MapToField(slot.AnchoredPosition);
+            anchoredPosition = MapToField(slot);
             return true;
         }
 
@@ -290,6 +315,7 @@ namespace FishPuzzle.Presentation
             }
 
             view.Bind(definition, slotId, _fishCatalog, _fishPrefab);
+            view.SetContentScale(ContentScale);
             _viewsBySlot[slotId] = view;
             _visible.Add(view);
             RefreshDepth();
@@ -317,20 +343,95 @@ namespace FishPuzzle.Presentation
             return null;
         }
 
-        private Vector2 MapToField(Vector2 authored)
+        /// <summary>
+        /// Marble packing. Slots keep their authored rows and columns, but are placed as a hexagonal stack:
+        /// same-row neighbours are one bubble apart and each row sits in the hollow of the row below, so
+        /// diagonal neighbours touch too. The stack rests on the bottom of the field (gravity) and is
+        /// sized to the largest pitch that fits; bubbles and fish grow with it.
+        /// </summary>
+        private void ComputePacking()
         {
+            _packed = false;
+            ContentScale = 1f;
             var area = _slotRoot != null ? _slotRoot.rect : new Rect(0f, 0f, 0f, 0f);
-            if (area.width < 64f || area.height < 64f)
+            if (area.width < 64f || area.height < 64f || _layout == null || _layout.Slots == null || _layout.Slots.Count == 0)
             {
-                return authored;
+                return;
             }
 
-            const float contentHalfX = 310f;
-            const float contentHalfY = 330f;
-            const float edgePadding = 176f;
-            var scaleX = Mathf.Max(80f, (area.width * 0.5f) - edgePadding) / contentHalfX;
-            var scaleY = Mathf.Max(80f, (area.height * 0.5f) - edgePadding) / contentHalfY;
-            return new Vector2(authored.x * scaleX, authored.y * scaleY);
+            var minRow = int.MaxValue;
+            var maxRow = int.MinValue;
+            _rowCounts.Clear();
+            var slots = _layout.Slots;
+            for (var i = 0; i < slots.Count; i++)
+            {
+                var slot = slots[i];
+                if (slot == null)
+                {
+                    continue;
+                }
+
+                minRow = Mathf.Min(minRow, slot.Row);
+                maxRow = Mathf.Max(maxRow, slot.Row);
+                _rowCounts.TryGetValue(slot.Row, out var inRow);
+                _rowCounts[slot.Row] = inRow + 1;
+            }
+
+            if (minRow > maxRow)
+            {
+                return;
+            }
+
+            var widestRow = 1;
+            foreach (var pair in _rowCounts)
+            {
+                widestRow = Mathf.Max(widestRow, pair.Value);
+            }
+
+            // Visible diameter = pitch * MarbleSqueeze, so neighbours press slightly into each other.
+            var columnsSpan = widestRow - 1;
+            var rowsSpan = (maxRow - minRow) * RowPitchRatio;
+            var byWidth = (area.width - (2f * SideMargin)) / (columnsSpan + MarbleSqueeze);
+            var byHeight = (area.height - BottomMargin - TopMargin) / (rowsSpan + MarbleSqueeze);
+            var pitch = Mathf.Max(40f, Mathf.Min(byWidth, byHeight));
+            ContentScale = Mathf.Clamp(
+                pitch * MarbleSqueeze / (BubbleView.BaseSize * BubbleView.VisibleDiameterFraction),
+                MinContentScale,
+                MaxContentScale);
+            // Keep the pitch consistent with a clamped scale so bubbles always touch.
+            pitch = ContentScale * BubbleView.BaseSize * BubbleView.VisibleDiameterFraction / MarbleSqueeze;
+            _pitch = pitch;
+            _minRow = minRow;
+            // Anchored positions are measured from the field centre (bubbles use centre anchors).
+            _origin = new Vector2(0f, (-area.height * 0.5f) + BottomMargin + (pitch * MarbleSqueeze * 0.5f));
+            _packed = true;
+        }
+
+        /// <summary>
+        /// Row and column decide the packed position; authored x/y jitter is ignored. Each row is centred, so a
+        /// 2-slot row sits in the hollows of a 3-slot row like stacked marbles.
+        /// </summary>
+        private Vector2 MapToField(BubblePileSlotDefinition slot)
+        {
+            if (slot == null)
+            {
+                return Vector2.zero;
+            }
+
+            if (!_packed)
+            {
+                ComputePacking();
+            }
+
+            if (!_packed)
+            {
+                return slot.AnchoredPosition;
+            }
+
+            _rowCounts.TryGetValue(slot.Row, out var inRow);
+            var x = (slot.Column - ((Mathf.Max(1, inRow) - 1) * 0.5f)) * _pitch;
+            var y = (slot.Row - _minRow) * RowPitchRatio * _pitch;
+            return _origin + new Vector2(x, y);
         }
 
         private static void PrepareRect(RectTransform rect, Vector2 anchoredPosition)

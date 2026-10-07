@@ -1,7 +1,7 @@
 namespace FishPuzzle.Bubbles
 {
     /// <summary>
-    /// Reserved bubble modifiers. Standard bubbles use None. Frozen and Locked are not implemented.
+    /// Bubble modifiers. Standard bubbles use None. Frozen is played since M15. Locked and Other are reserved.
     /// </summary>
     public enum BubbleModifier
     {

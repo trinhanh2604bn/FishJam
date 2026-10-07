@@ -34,7 +34,7 @@ namespace FishPuzzle.Presentation
 
         [Header("Bubbles")]
         [SerializeField] private float _bubbleFishReflowDuration = 0.155f;
-        [SerializeField] private float _bubblePopDuration = 0.07f;
+        [SerializeField] private float _bubblePopDuration = 0.13f;
         [SerializeField] private float _bubbleBurstLifetime = 1.0f;
         [SerializeField] private int _bubbleBurstCount = 32;
         [SerializeField] private int _bubbleBurstPoolCap = 200;
@@ -42,12 +42,12 @@ namespace FishPuzzle.Presentation
         [SerializeField] private int _bubbleLaunchCount = 12;
         [SerializeField] private int _tankSplashDropletCount = 10;
         [SerializeField] private int _tankSplashPoolCap = 4;
-        [SerializeField] private float _bubbleFallDuration = 0.2f;
-        [SerializeField] private float _bubbleSlideDuration = 0.2f;
+        [SerializeField] private float _bubbleFallDuration = 0.32f;
+        [SerializeField] private float _bubbleSlideDuration = 0.3f;
         [SerializeField] private float _bubbleLandingBounceDuration = 0.1f;
         [Tooltip("Delay between consecutive bubbles starting to settle or spawn, so the pile moves as a rhythmic wave.")]
-        [SerializeField] private float _bubbleSettleStagger = 0.06f;
-        [SerializeField] private float _bubbleTopSpawnDuration = 0.25f;
+        [SerializeField] private float _bubbleSettleStagger = 0.08f;
+        [SerializeField] private float _bubbleTopSpawnDuration = 0.34f;
         [SerializeField] private float _bubblePathArc = 22f;
         [SerializeField] private float _topSpawnOffset = 340f;
 
@@ -55,7 +55,7 @@ namespace FishPuzzle.Presentation
         [Tooltip("Wait after the level appears before the whole pile drops in, so the transition fade can clear.")]
         [SerializeField] private float _levelIntroDelay = 0.2f;
         [Tooltip("Time for the whole pile to drop from above the screen into its slots. 0 disables the intro.")]
-        [SerializeField] private float _levelIntroDuration = 0.5f;
+        [SerializeField] private float _levelIntroDuration = 0.9f;
         [Tooltip("Smallest drop distance. The drop is raised further when needed to start above the top of the screen.")]
         [SerializeField] private float _levelIntroMinDrop = 600f;
 

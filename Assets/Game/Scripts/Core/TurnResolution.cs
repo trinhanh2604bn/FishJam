@@ -46,6 +46,29 @@ namespace FishPuzzle.Core
         public FishType NextTarget { get; }
     }
 
+    /// <summary>One Frozen Bubble counter change caused by an adjacent fish selection.</summary>
+    public sealed class IceProgressRecord
+    {
+        public IceProgressRecord(string bubbleId, int slotId, int remaining, int required)
+        {
+            BubbleId = bubbleId ?? string.Empty;
+            SlotId = slotId;
+            Remaining = remaining;
+            Required = required;
+        }
+
+        public string BubbleId { get; }
+
+        public int SlotId { get; }
+
+        public int Remaining { get; }
+
+        public int Required { get; }
+
+        /// <summary>The counter reached 0 on this selection: Frozen Bubble became a normal bubble.</summary>
+        public bool Broke => Remaining == 0;
+    }
+
     public sealed class TurnResolution
     {
         public TurnResolution(
@@ -55,7 +78,8 @@ namespace FishPuzzle.Core
             IReadOnlyList<TrayPromotionRecord> promotions,
             IReadOnlyList<BubblePileMove> pileMoves,
             IReadOnlyList<BubbleSpawn> spawns,
-            bool won)
+            bool won,
+            IReadOnlyList<IceProgressRecord> iceUpdates = null)
         {
             PoppedBubble = poppedBubble;
             PoppedBubbleId = poppedBubbleId ?? string.Empty;
@@ -64,6 +88,7 @@ namespace FishPuzzle.Core
             PileMoves = pileMoves ?? System.Array.Empty<BubblePileMove>();
             Spawns = spawns ?? System.Array.Empty<BubbleSpawn>();
             Won = won;
+            IceUpdates = iceUpdates ?? System.Array.Empty<IceProgressRecord>();
         }
 
         public bool PoppedBubble { get; }
@@ -79,6 +104,9 @@ namespace FishPuzzle.Core
         public IReadOnlyList<BubbleSpawn> Spawns { get; }
 
         public bool Won { get; }
+
+        /// <summary>Frozen Bubble counters changed by the selected fish, in pile-slot order.</summary>
+        public IReadOnlyList<IceProgressRecord> IceUpdates { get; }
 
         public static TurnResolution Empty { get; } = new TurnResolution(
             false,

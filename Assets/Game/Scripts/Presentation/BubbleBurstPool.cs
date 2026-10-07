@@ -66,12 +66,22 @@ namespace FishPuzzle.Presentation
             return pool;
         }
 
-        public int Emit(Vector2 anchoredPosition, Sprite small, Sprite pop, float lifetime, int count)
+        /// <summary>
+        /// Pop burst. With <paramref name="bubbleRadius"/> above 0 the burst is sized to the real bubble: a ring
+        /// breaks from the rim, small bubbles spray out from the shell and drift up, and a few larger bubbles float
+        /// away slowly. Without it the legacy compact burst is used.
+        /// </summary>
+        public int Emit(Vector2 anchoredPosition, Sprite small, Sprite pop, float lifetime, int count, float bubbleRadius = 0f)
         {
             _lastEmitCount = 0;
             if (!BubblePopVfx.CanPlay(pop, small))
             {
                 return 0;
+            }
+
+            if (bubbleRadius > 1f)
+            {
+                return EmitShellBurst(anchoredPosition, small, pop, lifetime, count, bubbleRadius);
             }
 
             var bubble = small != null ? small : pop;
@@ -131,6 +141,82 @@ namespace FishPuzzle.Presentation
                 var size = Mathf.Lerp(12f, 20f, Random01());
                 var life = Mathf.Lerp(0.30f, 0.50f, Random01());
                 if (!Launch(Particle.Kind.Sparkle, ProceduralVfxSprite.Sparkle, anchoredPosition + (direction * Mathf.Lerp(10f, 30f, Random01())), direction * Mathf.Lerp(20f, 50f, Random01()), 18f, size, life, Mathf.Lerp(0.55f, 0.8f, Random01()), SparkleTint))
+                {
+                    break;
+                }
+
+                emitted++;
+            }
+
+            Recount();
+            _lastEmitCount = emitted;
+            transform.SetAsLastSibling();
+            return emitted;
+        }
+
+        private int EmitShellBurst(Vector2 center, Sprite small, Sprite pop, float lifetime, int count, float radius)
+        {
+            var bubble = small != null ? small : pop;
+            var sizeScale = Mathf.Clamp(radius / 127f, 0.8f, 1.7f);
+            var maxLife = Mathf.Clamp(lifetime * 1.15f, MinLifetime + 0.05f, MaxLifetime);
+            var emitted = 0;
+
+            if (Launch(Particle.Kind.Glow, ProceduralVfxSprite.Glow, center, Vector2.zero, 0f, radius * 1.9f, 0.32f, 0.42f, GlowTint))
+            {
+                emitted++;
+            }
+
+            // Ring starts just inside the rim (scale 0.7) and expands past it (1.9).
+            if (pop != null && Launch(Particle.Kind.Ring, pop, center, Vector2.zero, 0f, radius * 1.45f, 0.30f, 0.75f, Color.white))
+            {
+                emitted++;
+            }
+
+            // Small droplets spray out from the shell itself.
+            var smallCount = Mathf.Clamp(count + 8, MinCount, MaxCount);
+            var phase = Random01() * Mathf.PI * 2f;
+            for (var i = 0; i < smallCount; i++)
+            {
+                var angle = phase + ((i / (float)smallCount) * Mathf.PI * 2f) + ((Random01() - 0.5f) * 0.5f);
+                var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                var start = center + (direction * radius * Mathf.Lerp(0.55f, 0.95f, Random01()));
+                var travel = radius * Mathf.Lerp(0.3f, 0.85f, Random01());
+                var size = Mathf.Lerp(9f, 24f, Random01() * Random01()) * sizeScale;
+                var life = Mathf.Lerp(MinLifetime, maxLife, Random01());
+                var alpha = Mathf.Lerp(0.45f, 0.85f, Random01());
+                if (!Launch(Particle.Kind.Bubble, bubble, start, direction * travel, Mathf.Lerp(50f, 120f, Random01()) * sizeScale, size, life, alpha, BubbleTint))
+                {
+                    break;
+                }
+
+                emitted++;
+            }
+
+            // A handful of larger bubbles float up out of the burst and linger.
+            var mediumCount = MaxMediumCount + 2;
+            for (var i = 0; i < mediumCount; i++)
+            {
+                var angle = phase + ((i + 0.5f) / mediumCount * Mathf.PI * 2f) + ((Random01() - 0.5f) * 0.7f);
+                var direction = new Vector2(Mathf.Cos(angle), (Mathf.Sin(angle) * 0.6f) + 0.35f);
+                var start = center + (direction * radius * Mathf.Lerp(0.15f, 0.5f, Random01()));
+                var size = Mathf.Lerp(26f, 46f, Random01()) * sizeScale;
+                var alpha = Mathf.Lerp(0.45f, 0.7f, Random01());
+                if (!Launch(Particle.Kind.Bubble, bubble, start, direction * radius * Mathf.Lerp(0.25f, 0.55f, Random01()), Mathf.Lerp(90f, 170f, Random01()) * sizeScale, size, MaxLifetime, alpha, BubbleTint))
+                {
+                    break;
+                }
+
+                emitted++;
+            }
+
+            var sparkleCount = MaxSparkleCount + 1;
+            for (var i = 0; i < sparkleCount; i++)
+            {
+                var angle = Random01() * Mathf.PI * 2f;
+                var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                var size = Mathf.Lerp(16f, 28f, Random01()) * sizeScale;
+                var life = Mathf.Lerp(0.30f, 0.55f, Random01());
+                if (!Launch(Particle.Kind.Sparkle, ProceduralVfxSprite.Sparkle, center + (direction * radius * Mathf.Lerp(0.5f, 0.9f, Random01())), direction * radius * 0.4f, 18f, size, life, Mathf.Lerp(0.6f, 0.9f, Random01()), SparkleTint))
                 {
                     break;
                 }

@@ -30,10 +30,10 @@ namespace FishPuzzle.Tests.EditMode
             Assert.That(tuning.TrayAutoMoveStagger, Is.GreaterThanOrEqualTo(0f).And.LessThanOrEqualTo(0.25f));
             Assert.That(tuning.BubbleFishReflowDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
             Assert.That(tuning.BubblePopDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
-            Assert.That(tuning.BubbleFallDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
-            Assert.That(tuning.BubbleSlideDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
+            Assert.That(tuning.BubbleFallDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.4f));
+            Assert.That(tuning.BubbleSlideDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.4f));
             Assert.That(tuning.BubbleLandingBounceDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
-            Assert.That(tuning.BubbleTopSpawnDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
+            Assert.That(tuning.BubbleTopSpawnDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.4f));
             Assert.That(tuning.PresentationSafetySeconds, Is.GreaterThan(tuning.FishRouteDuration));
         }
 

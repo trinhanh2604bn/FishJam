@@ -79,6 +79,9 @@ namespace FishPuzzle.Core
         private int _comboResetCount;
         private int _promotionCompletionCount;
         private ComboTier _lastComboTier;
+        private int _frozenRejectCount;
+        private int _iceChipPresentedCount;
+        private int _iceBreakPresentedCount;
 
         public LevelSession Session => _session;
 
@@ -134,6 +137,15 @@ namespace FishPuzzle.Core
         public float ComboWindowSeconds => _combo.Window;
 
         public ComboTier LastComboTier => _lastComboTier;
+
+        /// <summary>Presses rejected because the fish sits in a Frozen Bubble this attempt.</summary>
+        public int FrozenRejectCount => _frozenRejectCount;
+
+        /// <summary>Frozen Bubble counter decrements presented this attempt (breaks excluded).</summary>
+        public int IceChipPresentedCount => _iceChipPresentedCount;
+
+        /// <summary>Frozen Bubbles turned into normal bubbles this attempt.</summary>
+        public int IceBreakPresentedCount => _iceBreakPresentedCount;
 
         public int ComboResetCount => _comboResetCount;
 
@@ -315,6 +327,9 @@ namespace FishPuzzle.Core
             _outcomeSoundPlayed = false;
             _landingFxCount = 0;
             _promotionCompletionCount = 0;
+            _frozenRejectCount = 0;
+            _iceChipPresentedCount = 0;
+            _iceBreakPresentedCount = 0;
             ResetCombo();
             if (_trail != null)
             {
@@ -339,6 +354,7 @@ namespace FishPuzzle.Core
             EnsureTouchFeedback();
             EnsureTrail();
             BindVisibleFish();
+            SyncIceViews();
             RefreshAllBadges();
             RefreshProgress();
             StartLevelIntro();
@@ -587,11 +603,114 @@ namespace FishPuzzle.Core
                 return false;
             }
 
+            if (_session.IsFishFrozen(view.FishId))
+            {
+                RejectFrozenPress(view);
+                return false;
+            }
+
             _pressedFish = view;
             view.BeginPress(_tuning);
             Sfx(SfxId.FishPress);
             Haptic(HapticKind.FishPress);
             return true;
+        }
+
+        /// <summary>Frozen fish: no reservation, no routing, no tray/tank change. Only a wobble and an ice click.</summary>
+        private void RejectFrozenPress(FishView view)
+        {
+            _frozenRejectCount++;
+            var bubble = view != null ? view.GetComponentInParent<BubbleView>() : null;
+            if (bubble != null)
+            {
+                bubble.PlayFrozenReject();
+            }
+
+            Sfx(SfxId.ButtonTap, 1.7f, 0.55f);
+        }
+
+        /// <summary>Counter punch for each chipped Frozen Bubble; ice break when a counter reached 0.</summary>
+        private void PresentIceUpdates(TurnResolution turn)
+        {
+            var pile = _scene != null ? _scene.BubblePile : null;
+            if (turn == null || pile == null || turn.IceUpdates.Count == 0)
+            {
+                return;
+            }
+
+            var broke = false;
+            for (var i = 0; i < turn.IceUpdates.Count; i++)
+            {
+                var update = turn.IceUpdates[i];
+                if (update == null || !pile.TryGetByBubbleId(update.BubbleId, out var view) || view == null)
+                {
+                    continue;
+                }
+
+                if (update.Broke)
+                {
+                    broke = true;
+                    _iceBreakPresentedCount++;
+                    view.PlayIceBreak(_suppressJuiceVfx ? null : IceSparkleSprite());
+                }
+                else
+                {
+                    _iceChipPresentedCount++;
+                    view.PlayIceChip(update.Remaining);
+                }
+            }
+
+            if (broke)
+            {
+                Sfx(SfxId.BubblePop, 1.5f, 0.8f);
+            }
+            else
+            {
+                Sfx(SfxId.ButtonTap, 1.35f, 0.7f);
+            }
+        }
+
+        private Sprite IceSparkleSprite()
+        {
+            if (_art == null)
+            {
+                return null;
+            }
+
+            return _art.SnowflakeIcon != null ? _art.SnowflakeIcon : _art.SmallBubbleParticle;
+        }
+
+        /// <summary>Snaps every visible bubble's frost overlay and counter to the session.</summary>
+        private void SyncIceViews()
+        {
+            if (_scene == null || _scene.BubblePile == null)
+            {
+                return;
+            }
+
+            var visible = _scene.BubblePile.VisibleBubbles;
+            for (var i = 0; i < visible.Count; i++)
+            {
+                SyncIceView(visible[i]);
+            }
+        }
+
+        private void SyncIceView(BubbleView view)
+        {
+            if (view == null || _session == null)
+            {
+                return;
+            }
+
+            var runtime = _session.FindBubble(view.BubbleId);
+            var remaining = runtime != null ? runtime.IceSelectionsRemaining : 0;
+            if (remaining <= 0 && !view.IsIceShown)
+            {
+                return;
+            }
+
+            var font = _scene != null && _scene.GlobalProgressDisplay != null ? _scene.GlobalProgressDisplay.font : null;
+            view.ShowIce(remaining, _art != null ? _art.BubbleFrostOverlay : null, font);
         }
 
         private void CommitPressedFish(FishView view)
@@ -1163,6 +1282,7 @@ namespace FishPuzzle.Core
             _acceptedRouteCount++;
             Sfx(SfxId.FishLaunch);
             var turn = _session.LastTurn ?? TurnResolution.Empty;
+            PresentIceUpdates(turn);
             if (turn.PoppedBubble)
             {
                 DisableBubbleInput(turn.PoppedBubbleId);
@@ -1619,7 +1739,7 @@ namespace FishPuzzle.Core
             {
                 elapsed += Step();
                 var sample = PresentationMotion.Sample(pile != null, elapsed, duration);
-                PlaceIntroBubbles(pile, drop * (1f - PresentationMotion.EaseInQuad(sample.T)));
+                PlaceIntroBubbles(pile, drop * (1f - PresentationMotion.EaseOutCubic(sample.T)));
                 if (sample.Completed)
                 {
                     break;
@@ -1700,7 +1820,7 @@ namespace FishPuzzle.Core
             var rect = view.transform as RectTransform;
             var parent = rect != null ? rect.parent as RectTransform : null;
             var origin = rect != null ? rect.anchoredPosition : Vector2.zero;
-            EmitBubbleBurst(parent, origin);
+            EmitBubbleBurst(parent, origin, view.VisibleRadius);
             Sfx(SfxId.BubblePop);
             Haptic(HapticKind.BubblePop);
 
@@ -1728,7 +1848,7 @@ namespace FishPuzzle.Core
             DestroyPoppingBubble();
         }
 
-        private void EmitBubbleBurst(RectTransform parent, Vector2 origin)
+        private void EmitBubbleBurst(RectTransform parent, Vector2 origin, float bubbleRadius = 0f)
         {
             if (_suppressPopVfx || parent == null)
             {
@@ -1752,7 +1872,7 @@ namespace FishPuzzle.Core
 
                 var lifetime = _tuning != null ? _tuning.BubbleBurstLifetime : 1.0f;
                 var count = _tuning != null ? _tuning.BubbleBurstCount : 32;
-                var emitted = _bursts.Emit(origin, smallSprite, popSprite, lifetime, count);
+                var emitted = _bursts.Emit(origin, smallSprite, popSprite, lifetime, count, bubbleRadius);
                 if (emitted > 0)
                 {
                     _bubbleBurstEmissions += emitted;
@@ -1799,6 +1919,7 @@ namespace FishPuzzle.Core
             }
 
             BindBubbleFish(view, bubbleId, false);
+            SyncIceView(view);
             yield return null;
             Sfx(SfxId.TopSpawn);
             var rect = view.transform as RectTransform;
@@ -1808,7 +1929,7 @@ namespace FishPuzzle.Core
             {
                 elapsed += Step();
                 var sample = PresentationMotion.Sample(rect != null, elapsed, duration);
-                var eased = PresentationMotion.EaseInQuad(sample.T);
+                var eased = PresentationMotion.Hop(sample.T);
                 rect.anchoredPosition = Vector2.Lerp(start, destination, eased);
                 if (sample.Completed)
                 {
@@ -1850,6 +1971,8 @@ namespace FishPuzzle.Core
                 yield break;
             }
 
+            var startScale = rect != null ? rect.localScale.x : 1f;
+            var squash = Mathf.Min(_tuning.FishTapSquashDuration, seconds * 0.5f);
             var elapsed = 0f;
             var toTray = !hop;
             var trailClock = 0f;
@@ -1866,6 +1989,12 @@ namespace FishPuzzle.Core
                     var sample = PresentationMotion.Sample(true, elapsed, seconds);
                     var along = hop ? PresentationMotion.RoutePace(sample.T) : PresentationMotion.EaseOutQuad(sample.T);
                     rect.position = PresentationMotion.QuadraticBezier(start, control, end, along);
+                    if (!Mathf.Approximately(startScale, 1f) && elapsed >= squash)
+                    {
+                        var shrink = seconds - squash > 0f ? Mathf.Clamp01((elapsed - squash) / (seconds - squash)) : 1f;
+                        rect.localScale = Vector3.one * Mathf.Lerp(startScale, 1f, PresentationMotion.EaseOutQuad(shrink));
+                    }
+
                     if (!sample.Completed)
                     {
                         TickTrail(rect, toTray, step, sample.T, ref trailClock, ref trailInterval, ref trailFrom);
@@ -2032,12 +2161,13 @@ namespace FishPuzzle.Core
                 yield break;
             }
 
+            var origin = target.localScale;
             var elapsed = 0f;
             while (elapsed < seconds && target != null)
             {
                 elapsed += Step();
                 var sample = PresentationMotion.Sample(target != null, elapsed, seconds);
-                target.localScale = PresentationMotion.BounceScale(sample.T, _tuning.LandingOvershoot);
+                target.localScale = Vector3.Scale(origin, PresentationMotion.BounceScale(sample.T, _tuning.LandingOvershoot));
                 if (sample.Completed)
                 {
                     break;
@@ -2048,7 +2178,7 @@ namespace FishPuzzle.Core
 
             if (target != null)
             {
-                target.localScale = Vector3.one;
+                target.localScale = origin;
             }
         }
 
@@ -2227,6 +2357,7 @@ namespace FishPuzzle.Core
                 SnapPileToSession();
                 SnapBubbleLayouts();
                 ReconcileFishViews();
+                SyncIceViews();
                 ResetFeedbackScales();
                 RefreshAllBadges();
                 RefreshProgress();
@@ -2270,7 +2401,8 @@ namespace FishPuzzle.Core
             {
                 rect.SetParent(_flightLayer, true);
                 rect.localRotation = Quaternion.identity;
-                rect.localScale = Vector3.one;
+                // Keep the in-bubble size (pile packing may enlarge fish); FlyAndReflow eases it back to 1.
+                rect.localScale = Vector3.one * Mathf.Max(0.01f, rect.localScale.x);
             }
 
             view.ReleaseInteraction();

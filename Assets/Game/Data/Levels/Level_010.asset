@@ -1,0 +1,88 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69ddf96b3d1052d4497e0a5e6d4a0ab3, type: 3}
+  m_Name: Level_010
+  m_EditorClassIdentifier: FishPuzzle.Runtime::FishPuzzle.Domain.LevelData
+  _levelId: level_010
+  _initialUnlockedTankCount: 2
+  _totalFishRequired: 75
+  _targetGroupQueue: 0500000006000000070000000b0000000400000008000000000000000c0000000100000003000000020000000700000003000000000000000c00000006000000080000000100000004000000050000000b00000002000000000000000200000001000000i
+  _bubbleQueue:
+  - _bubbleId: L010_B001
+    _fishes: 0600000006000000050000000500000000000000i
+    _modifier: 1
+    _iceBreakRequiredSelections: 3
+  - _bubbleId: L010_B002
+    _fishes: 02000000020000000b0000000b0000000c000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B003
+    _fishes: 040000000c00000000000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B004
+    _fishes: 0700000007000000070000000200000006000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B005
+    _fishes: 0800000008000000000000000000000007000000i
+    _modifier: 1
+    _iceBreakRequiredSelections: 4
+  - _bubbleId: L010_B006
+    _fishes: 0000000000000000040000000400000001000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B007
+    _fishes: 0400000004000000010000000100000002000000i
+    _modifier: 1
+    _iceBreakRequiredSelections: 5
+  - _bubbleId: L010_B008
+    _fishes: 0c0000000c000000070000000700000008000000i
+    _modifier: 1
+    _iceBreakRequiredSelections: 5
+  - _bubbleId: L010_B009
+    _fishes: 0300000003000000030000000b00000000000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B010
+    _fishes: 06000000060000000500000003000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B011
+    _fishes: 0800000001000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B012
+    _fishes: 02000000020000000500000004000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B013
+    _fishes: 0100000001000000050000000c000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B014
+    _fishes: 0b0000000b000000080000000800000005000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B015
+    _fishes: 0000000000000000030000000300000002000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B016
+    _fishes: 0200000002000000010000000c000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  - _bubbleId: L010_B017
+    _fishes: 01000000010000000b00000006000000i
+    _modifier: 0
+    _iceBreakRequiredSelections: 0
+  _pileLayout: {fileID: 11400000, guid: 1f038151b504d204d95d327069b6c875, type: 2}

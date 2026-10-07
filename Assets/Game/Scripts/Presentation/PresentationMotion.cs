@@ -47,6 +47,13 @@ namespace FishPuzzle.Presentation
             return 1f - ((1f - clamped) * (1f - clamped));
         }
 
+        /// <summary>Fast start, long soft arrival. Used for the level-start pile drop.</summary>
+        public static float EaseOutCubic(float t)
+        {
+            var inverse = 1f - Mathf.Clamp01(t);
+            return 1f - (inverse * inverse * inverse);
+        }
+
         public static float EaseInQuad(float t)
         {
             var clamped = Mathf.Clamp01(t);
@@ -121,7 +128,8 @@ namespace FishPuzzle.Presentation
                 return to;
             }
 
-            var eased = EaseInQuad(t);
+            // Smoothstep: the bubble eases out of its old slot and settles gently into the new one.
+            var eased = Hop(t);
             var position = Vector2.Lerp(from, to, eased);
             if (Mathf.Abs(to.x - from.x) < 0.01f)
             {
