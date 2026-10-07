@@ -9,9 +9,16 @@ namespace FishPuzzle.Presentation
     public sealed class TouchFeedbackController : MonoBehaviour
     {
         private const int RipplePool = 4;
+        public const int SparklePool = 60;
+        public const int TapSparkleCount = 9;
+        public const int HoldSparkleCount = 2;
+        private const float SparkleLifetime = 0.62f;
 
         private readonly List<TouchRippleView> _ripples = new List<TouchRippleView>();
         private readonly List<TouchBubbleParticleView> _bubbles = new List<TouchBubbleParticleView>();
+        private readonly List<TouchSparkleView> _sparkles = new List<TouchSparkleView>();
+        private uint _sparkleSeed = 0x9E3779B9u;
+        private int _sparkleEmitCount;
 
         private RectTransform _layer;
         private GameplayArtCatalog _art;
@@ -33,6 +40,14 @@ namespace FishPuzzle.Presentation
         {
             get { return CountActiveBubbles(); }
         }
+
+        public int ActiveSparkleCount
+        {
+            get { return CountActiveSparkles(); }
+        }
+
+        /// <summary>Sparkles started this session (taps, holds and drags).</summary>
+        public int SparkleEmitCount => _sparkleEmitCount;
 
         public bool IsHolding => !_suppressed && (_deviceHolding || _syntheticHold);
 
@@ -115,6 +130,7 @@ namespace FishPuzzle.Presentation
                 {
                     _emitElapsed = 0f;
                     EmitBubble(_holdLocal);
+                    EmitSparkles(_holdLocal, HoldSparkleCount, 46f);
                 }
             }
 
@@ -131,6 +147,14 @@ namespace FishPuzzle.Presentation
                 if (_bubbles[i] != null)
                 {
                     _bubbles[i].Tick(step);
+                }
+            }
+
+            for (var i = 0; i < _sparkles.Count; i++)
+            {
+                if (_sparkles[i] != null)
+                {
+                    _sparkles[i].Tick(step);
                 }
             }
         }
@@ -206,6 +230,7 @@ namespace FishPuzzle.Presentation
                 Rippled?.Invoke();
             }
 
+            EmitSparkles(local, TapSparkleCount, 70f);
             var initial = _bubbleLimit < 2 ? _bubbleLimit : 2;
             for (var i = 0; i < initial; i++)
             {
@@ -229,6 +254,75 @@ namespace FishPuzzle.Presentation
             _seed += 0.173f;
             var lifetime = _tuning != null ? _tuning.TouchBubbleLifetime : 0.42f;
             bubble.Play(local, BubbleSprite(), lifetime, _seed);
+        }
+
+        /// <summary>A ring of twinkling stars around <paramref name="local"/>; <paramref name="reach"/> is the outward travel.</summary>
+        private void EmitSparkles(Vector2 local, int count, float reach)
+        {
+            if (_suppressed || _layer == null)
+            {
+                return;
+            }
+
+            var phase = SparkleRandom() * Mathf.PI * 2f;
+            for (var i = 0; i < count; i++)
+            {
+                var sparkle = NextSparkle();
+                if (sparkle == null)
+                {
+                    return;
+                }
+
+                var angle = phase + ((i / (float)Mathf.Max(1, count)) * Mathf.PI * 2f) + ((SparkleRandom() - 0.5f) * 0.6f);
+                var direction = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                var start = local + (direction * Mathf.Lerp(6f, 22f, SparkleRandom()));
+                var travel = direction * reach * Mathf.Lerp(0.55f, 1f, SparkleRandom());
+                var life = SparkleLifetime * Mathf.Lerp(0.75f, 1.2f, SparkleRandom());
+                sparkle.Play(start, travel, life, SparkleRandom(), SparkleRandom());
+                _sparkleEmitCount++;
+            }
+        }
+
+        private TouchSparkleView NextSparkle()
+        {
+            for (var i = 0; i < _sparkles.Count; i++)
+            {
+                if (_sparkles[i] != null && !_sparkles[i].IsActive)
+                {
+                    return _sparkles[i];
+                }
+            }
+
+            if (_sparkles.Count >= SparklePool)
+            {
+                return null;
+            }
+
+            var created = TouchSparkleView.Create(_layer);
+            _sparkles.Add(created);
+            return created;
+        }
+
+        private int CountActiveSparkles()
+        {
+            var count = 0;
+            for (var i = 0; i < _sparkles.Count; i++)
+            {
+                if (_sparkles[i] != null && _sparkles[i].IsActive)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private float SparkleRandom()
+        {
+            _sparkleSeed ^= _sparkleSeed << 13;
+            _sparkleSeed ^= _sparkleSeed >> 17;
+            _sparkleSeed ^= _sparkleSeed << 5;
+            return (_sparkleSeed & 0xFFFFFF) / 16777215f;
         }
 
         private TouchRippleView NextRipple()
@@ -286,6 +380,14 @@ namespace FishPuzzle.Presentation
                 if (_bubbles[i] != null)
                 {
                     _bubbles[i].Stop();
+                }
+            }
+
+            for (var i = 0; i < _sparkles.Count; i++)
+            {
+                if (_sparkles[i] != null)
+                {
+                    _sparkles[i].Stop();
                 }
             }
         }

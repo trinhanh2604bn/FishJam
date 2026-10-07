@@ -186,6 +186,31 @@ namespace FishPuzzle.Tests.EditMode
         }
 
         [Test]
+        public void EveryTouch_EmitsTwinklingSparkles_ThatNeverBlockInput()
+        {
+            var parent = new GameObject("touch-parent", typeof(RectTransform));
+            _created.Add(parent);
+            var touch = TouchFeedbackController.Create(parent.transform, null, AnimationTuning.RuntimeDefault());
+            touch.PresentAtLocal(new Vector2(40f, -20f));
+
+            Assert.That(touch.ActiveSparkleCount, Is.EqualTo(TouchFeedbackController.TapSparkleCount));
+            Assert.That(touch.SparkleEmitCount, Is.EqualTo(TouchFeedbackController.TapSparkleCount));
+            var sparkles = touch.GetComponentsInChildren<TouchSparkleView>(true);
+            for (var i = 0; i < sparkles.Length; i++)
+            {
+                Assert.That(sparkles[i].GetComponent<UnityEngine.UI.Image>().raycastTarget, Is.False);
+            }
+
+            // Holding keeps streaming sparkles at the finger.
+            touch.Tick(0.12f);
+            Assert.That(touch.SparkleEmitCount, Is.GreaterThan(TouchFeedbackController.TapSparkleCount));
+
+            touch.PresentPointerUp();
+            touch.Tick(2f);
+            Assert.That(touch.ActiveSparkleCount, Is.EqualTo(0));
+        }
+
+        [Test]
         public void Pile_PacksLikeMarbles_RestingOnTheFieldBottom()
         {
             var field = new GameObject("BubbleField", typeof(RectTransform));

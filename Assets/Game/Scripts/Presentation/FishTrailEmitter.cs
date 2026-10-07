@@ -210,16 +210,16 @@ namespace FishPuzzle.Presentation
                 return false;
             }
 
-            var offset = new Vector2((Random01() - 0.5f) * 36f, (Random01() - 0.5f) * 26f);
-            var drift = new Vector2((Random01() - 0.5f) * 14f, Mathf.Lerp(8f, 22f, Random01()));
+            var offset = new Vector2((Random01() - 0.5f) * 52f, (Random01() - 0.5f) * 40f);
+            var drift = new Vector2((Random01() - 0.5f) * 30f, Mathf.Lerp(10f, 32f, Random01()));
             particle.Launch(
                 _layer,
                 ProceduralVfxSprite.Sparkle,
                 WorldToAnchored(_layer, worldPosition) + offset,
                 drift,
-                Mathf.Lerp(11f, 18f, Random01()),
-                Mathf.Lerp(0.28f, 0.42f, Random01()),
-                Mathf.Lerp(0.5f, 0.75f, Random01()),
+                Mathf.Lerp(16f, 30f, Random01() * Random01()),
+                Mathf.Lerp(0.4f, 0.65f, Random01()),
+                Mathf.Lerp(0.7f, 1f, Random01()),
                 SparkleTint,
                 true,
                 Random01());

@@ -18,10 +18,10 @@ namespace FishPuzzle.Core
     public sealed class GameFlowController : MonoBehaviour
     {
         private const int MaxTrailEmitsPerFrame = 6;
-        private const float TrailSparkleFromProgress = 0.7f;
-        private const int TrailSparkleEvery = 3;
+        private const float TrailSparkleFromProgress = 0.05f;
+        private const int TrailSparkleEvery = 1;
         private const int LandingBubbleCount = 12;
-        private const int LandingSparkleCount = 4;
+        private const int LandingSparkleCount = 10;
 
         private readonly Dictionary<int, FishView> _viewsByFishId = new Dictionary<int, FishView>();
         private readonly List<GameObject> _ephemeral = new List<GameObject>();
@@ -1721,26 +1721,116 @@ namespace FishPuzzle.Core
             }
         }
 
-        /// <summary>The whole pile drops in together, lands on the same frame and bounces once.</summary>
+        /// <summary>
+        /// "Pouring marbles into a jar": bubbles drop one by one, bottom rows first, at irregular intervals (some fall
+        /// almost together). Each starts above the screen, a little off to one side and tilted, falls with gravity,
+        /// rolls sideways into its hollow, and lands with a squash and one small rebound. Deterministic per level.
+        /// </summary>
         private IEnumerator PlayLevelIntro(BubblePileView pile, float drop, float duration)
         {
-            var delay = _tuning.LevelIntroDelay;
-            var elapsed = 0f;
-            while (elapsed < delay)
+            var count = _introBubbles.Count;
+            var order = new List<int>(count);
+            for (var i = 0; i < count; i++)
             {
-                elapsed += Step();
-                PlaceIntroBubbles(pile, drop);
-                yield return null;
+                order.Add(i);
             }
 
-            Sfx(SfxId.TopSpawn);
-            elapsed = 0f;
-            while (elapsed < duration)
+            var seed = 0x51ED270Bu ^ (uint)(count * 7919);
+            order.Sort((a, b) =>
+            {
+                var rowA = IntroRow(pile, _introBubbles[a]);
+                var rowB = IntroRow(pile, _introBubbles[b]);
+                return rowA != rowB ? rowA.CompareTo(rowB) : IntroHash(a).CompareTo(IntroHash(b));
+            });
+
+            var starts = new float[count];
+            var offsets = new Vector2[count];
+            var tilts = new float[count];
+            var falls = new float[count];
+            var landed = new bool[count];
+            var averageGap = count > 1 ? Mathf.Min(0.14f, duration / (count - 1)) : 0f;
+            var clock = _tuning.LevelIntroDelay;
+            for (var n = 0; n < count; n++)
+            {
+                var i = order[n];
+                var r1 = IntroRandom(ref seed);
+                var r2 = IntroRandom(ref seed);
+                var r3 = IntroRandom(ref seed);
+                var r4 = IntroRandom(ref seed);
+                starts[i] = clock;
+                // Irregular rhythm: usually a gap, sometimes two bubbles tumble in almost together.
+                clock += r1 < 0.22f ? averageGap * 0.2f : averageGap * Mathf.Lerp(0.7f, 1.5f, r2);
+                var radius = _introBubbles[i].VisibleRadius;
+                offsets[i] = new Vector2((r3 - 0.5f) * 2f * radius * 0.9f, drop + (r4 * radius * 1.2f));
+                tilts[i] = (r2 - 0.5f) * 36f;
+                falls[i] = Mathf.Lerp(0.42f, 0.56f, r1);
+            }
+
+            var rebound = Mathf.Max(0.12f, _tuning.BubbleLandingBounceDuration * 2.2f);
+            var elapsed = 0f;
+            var finished = 0;
+            var firstSound = true;
+            while (finished < count)
             {
                 elapsed += Step();
-                var sample = PresentationMotion.Sample(pile != null, elapsed, duration);
-                PlaceIntroBubbles(pile, drop * (1f - PresentationMotion.EaseOutCubic(sample.T)));
-                if (sample.Completed)
+                finished = 0;
+                for (var i = 0; i < count; i++)
+                {
+                    var view = _introBubbles[i];
+                    if (view == null || !(view.transform is RectTransform rect) || !pile.TryGetSlotPosition(view.SlotId, out var slot))
+                    {
+                        finished++;
+                        continue;
+                    }
+
+                    var local = elapsed - starts[i];
+                    if (local <= 0f)
+                    {
+                        rect.anchoredPosition = slot + offsets[i];
+                        rect.localRotation = Quaternion.Euler(0f, 0f, tilts[i]);
+                        continue;
+                    }
+
+                    if (local < falls[i])
+                    {
+                        if (firstSound)
+                        {
+                            firstSound = false;
+                            Sfx(SfxId.TopSpawn);
+                        }
+
+                        var t = local / falls[i];
+                        var y = offsets[i].y * (1f - PresentationMotion.EaseInQuad(t));
+                        var x = offsets[i].x * (1f - PresentationMotion.EaseOutQuad(t));
+                        rect.anchoredPosition = slot + new Vector2(x, y);
+                        rect.localRotation = Quaternion.Euler(0f, 0f, tilts[i] * (1f - t));
+                        continue;
+                    }
+
+                    if (!landed[i])
+                    {
+                        landed[i] = true;
+                        Sfx(SfxId.BubbleSettle, Mathf.Lerp(0.9f, 1.15f, IntroHash(i)), 0.7f);
+                    }
+
+                    rect.localRotation = Quaternion.identity;
+                    var after = local - falls[i];
+                    if (after < rebound)
+                    {
+                        // One small hop and a squash, like a marble settling on the pile.
+                        var t = after / rebound;
+                        var hop = Mathf.Sin(t * Mathf.PI) * view.VisibleRadius * 0.16f * (1f - t);
+                        rect.anchoredPosition = slot + new Vector2(0f, hop);
+                        rect.localScale = PresentationMotion.BounceScale(Mathf.Clamp01(t * 1.6f), _tuning.LandingOvershoot);
+                        continue;
+                    }
+
+                    rect.anchoredPosition = slot;
+                    rect.localScale = Vector3.one;
+                    finished++;
+                }
+
+                if (finished >= count)
                 {
                     break;
                 }
@@ -1749,25 +1839,28 @@ namespace FishPuzzle.Core
             }
 
             PlaceIntroBubbles(pile, 0f);
-            Sfx(SfxId.BubbleSettle);
-            var bounce = _tuning.BubbleLandingBounceDuration;
-            elapsed = 0f;
-            while (elapsed < bounce)
-            {
-                elapsed += Step();
-                var sample = PresentationMotion.Sample(true, elapsed, bounce);
-                SetIntroScale(PresentationMotion.BounceScale(sample.T, _tuning.LandingOvershoot));
-                if (sample.Completed)
-                {
-                    break;
-                }
-
-                yield return null;
-            }
-
             SetIntroScale(Vector3.one);
             _introBubbles.Clear();
             _introRoutine = null;
+        }
+
+        private static int IntroRow(BubblePileView pile, BubbleView view)
+        {
+            return pile != null && view != null && pile.TryGetSlotRow(view.SlotId, out var row) ? row : 0;
+        }
+
+        private static float IntroHash(int index)
+        {
+            var value = Mathf.Sin((index + 1) * 12.9898f) * 43758.5453f;
+            return value - Mathf.Floor(value);
+        }
+
+        private static float IntroRandom(ref uint seed)
+        {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            return (seed & 0xFFFFFF) / 16777215f;
         }
 
         private void SetIntroScale(Vector3 scale)
@@ -1798,6 +1891,14 @@ namespace FishPuzzle.Core
             }
 
             SetIntroScale(Vector3.one);
+            for (var i = 0; i < _introBubbles.Count; i++)
+            {
+                if (_introBubbles[i] != null)
+                {
+                    _introBubbles[i].transform.localRotation = Quaternion.identity;
+                }
+            }
+
             _introBubbles.Clear();
         }
 

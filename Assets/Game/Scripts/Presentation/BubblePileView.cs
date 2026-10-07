@@ -232,6 +232,18 @@ namespace FishPuzzle.Presentation
             return false;
         }
 
+        public bool TryGetSlotRow(int slotId, out int row)
+        {
+            row = 0;
+            if (!TryFindSlot(_layout, slotId, out var slot) || slot == null)
+            {
+                return false;
+            }
+
+            row = slot.Row;
+            return true;
+        }
+
         public bool TryGetSlotPosition(int slotId, out Vector2 anchoredPosition)
         {
             anchoredPosition = Vector2.zero;
