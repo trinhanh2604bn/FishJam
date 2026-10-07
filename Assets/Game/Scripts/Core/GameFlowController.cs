@@ -56,10 +56,11 @@ namespace FishPuzzle.Core
         private int _bubbleBurstEmissions;
         private float _lastBubblePopSeconds;
         private BubbleBurstPool _bursts;
-        private BubbleBurstPool _launchBursts;
         private readonly ComboStreakTracker _combo = new ComboStreakTracker();
         private AudioFeedbackService _audio;
+        private HapticFeedbackService _haptics;
         private FishTrailEmitter _trail;
+        private int _trailSampleMark;
         private ComboFeedbackView _comboView;
         private Func<float> _presentationClock;
         private bool _suppressJuiceVfx;
@@ -103,6 +104,10 @@ namespace FishPuzzle.Core
 
         public AudioFeedbackService Audio => _audio;
 
+        public HapticFeedbackService Haptics => _haptics;
+
+        public AnimationTuning Tuning => _tuning;
+
         public FishTrailEmitter Trail => _trail;
 
         /// <summary>Trail bubbles requested along fish flights this attempt.</summary>
@@ -128,6 +133,12 @@ namespace FishPuzzle.Core
         public void ConfigureFeedback(AudioFeedbackService audio)
         {
             _audio = audio;
+        }
+
+        /// <summary>Presentation-only vibration. Null is allowed and vibrates nothing.</summary>
+        public void ConfigureHaptics(HapticFeedbackService haptics)
+        {
+            _haptics = haptics;
         }
 
         /// <summary>Test hook: replaces the clock used for the combo window. Null restores unscaled time.</summary>
@@ -235,11 +246,6 @@ namespace FishPuzzle.Core
                 _bursts.ReleaseAll();
             }
 
-            if (_launchBursts != null)
-            {
-                _launchBursts.ReleaseAll();
-            }
-
             ResetCombo();
             if (_trail != null)
             {
@@ -289,11 +295,6 @@ namespace FishPuzzle.Core
             if (_bursts != null)
             {
                 _bursts.ReleaseAll();
-            }
-
-            if (_launchBursts != null)
-            {
-                _launchBursts.ReleaseAll();
             }
 
             _suppressJuiceVfx = false;
@@ -571,6 +572,7 @@ namespace FishPuzzle.Core
             _pressedFish = view;
             view.BeginPress(_tuning);
             Sfx(SfxId.FishPress);
+            Haptic(HapticKind.FishPress);
             return true;
         }
 
@@ -620,7 +622,11 @@ namespace FishPuzzle.Core
             if (_touch == null)
             {
                 _touch = TouchFeedbackController.Create(TouchParent(), _art, _tuning);
-                _touch.Rippled += () => Sfx(SfxId.TouchRipple, 1f, 0.6f);
+                _touch.Rippled += () =>
+                {
+                    Sfx(SfxId.TouchRipple, 1f, 0.6f);
+                    Haptic(HapticKind.Touch);
+                };
             }
             else
             {
@@ -653,6 +659,22 @@ namespace FishPuzzle.Core
             catch (Exception)
             {
                 return false;
+            }
+        }
+
+        private void Haptic(HapticKind kind)
+        {
+            if (_haptics == null)
+            {
+                return;
+            }
+
+            try
+            {
+                _haptics.Play(kind);
+            }
+            catch (Exception)
+            {
             }
         }
 
@@ -806,6 +828,13 @@ namespace FishPuzzle.Core
             if (_trail != null)
             {
                 _trail.SetSprite(sprite);
+                var existingParent = TrailParent();
+                if (existingParent != null && _trail.transform.parent != existingParent)
+                {
+                    _trail.transform.SetParent(existingParent, false);
+                }
+
+                OrderTrailUnderFish();
                 return;
             }
 
@@ -816,28 +845,42 @@ namespace FishPuzzle.Core
             }
 
             _trail = FishTrailEmitter.Create(parent, sprite);
-            if (_trail != null)
-            {
-                // Directly above the gameplay board (bubbles, tanks, tray) and below the combo layer and modals.
-                _trail.transform.SetAsLastSibling();
-            }
+            OrderTrailUnderFish();
         }
 
         private RectTransform TrailParent()
         {
+            if (_flightLayer != null)
+            {
+                return _flightLayer.parent as RectTransform;
+            }
+
             if (_scene == null)
             {
                 return null;
             }
 
-            var board = _scene.BubblePile != null ? _scene.BubblePile.transform.parent as RectTransform : null;
-            if (board != null)
+            var canvas = _scene.GlobalProgressDisplay != null ? _scene.GlobalProgressDisplay.canvas : null;
+            if (canvas != null)
             {
-                return board;
+                return canvas.transform as RectTransform;
             }
 
-            var canvas = _scene.GlobalProgressDisplay != null ? _scene.GlobalProgressDisplay.canvas : null;
-            return canvas != null ? canvas.transform as RectTransform : null;
+            return _scene.BubblePile != null ? _scene.BubblePile.transform.parent as RectTransform : null;
+        }
+
+        /// <summary>Trail FX sits on the same canvas as the flight layer, one sibling beneath the flying fish.</summary>
+        private void OrderTrailUnderFish()
+        {
+            if (_trail != null)
+            {
+                _trail.transform.SetAsLastSibling();
+            }
+
+            if (_flightLayer != null)
+            {
+                _flightLayer.SetAsLastSibling();
+            }
         }
 
         private float TrailInterval(bool toTray)
@@ -847,16 +890,39 @@ namespace FishPuzzle.Core
                 : FishTrailEmitter.MaxInterval * (toTray ? FishTrailEmitter.TrayIntervalFactor : 1f);
         }
 
-        private void EmitTrail(Vector3 worldPosition)
+        private void MarkTrailSamples()
         {
-            if (_suppressJuiceVfx || _trail == null)
+            _trailSampleMark = _trail != null ? _trail.SpawnCount : 0;
+        }
+
+        /// <summary>Development proof that this flight left bubbles at several points along the route.</summary>
+        private void AssertTrailFollowedRoute(bool fullTrail)
+        {
+            if (!fullTrail || _suppressJuiceVfx || _trail == null)
+            {
+                return;
+            }
+
+            if (_trail.SamplesSinceFollowRoute(_trailSampleMark))
+            {
+                return;
+            }
+
+            GameLog.Error(
+                nameof(GameFlowController),
+                "Fish trail did not sample distinct positions along the route. Spawns " + _trail.SpawnCount + ".");
+        }
+
+        private void EmitTrail(RectTransform fish)
+        {
+            if (_suppressJuiceVfx || _trail == null || fish == null)
             {
                 return;
             }
 
             try
             {
-                _trail.Emit(worldPosition);
+                _trail.EmitCurrent(fish);
             }
             catch (Exception)
             {
@@ -895,7 +961,7 @@ namespace FishPuzzle.Core
         }
 
         /// <summary>
-        /// Correct tank landing: splash + droplets + ripple here, a short bubble burst around the fish and the plop sound.
+        /// Correct tank landing: plop sound, splash + droplets + ripple and a short bubble burst around the fish, then the landing haptic.
         /// The small tank bounce follows in <see cref="BounceFish"/>. Every landing runs this, including the third fish.
         /// </summary>
         private void PlayTankSplash(RectTransform anchor)
@@ -907,11 +973,16 @@ namespace FishPuzzle.Core
 
             _landingFxCount++;
             Sfx(SfxId.TankLand);
-            if (_suppressLandingSplash)
+            if (!_suppressLandingSplash)
             {
-                return;
+                PlayLandingVisuals(anchor);
             }
 
+            Haptic(HapticKind.TankLanding);
+        }
+
+        private void PlayLandingVisuals(RectTransform anchor)
+        {
             EmitLandingBubbles(anchor.TransformPoint(anchor.rect.center));
 
             EnsureFlightLayer();
@@ -1098,7 +1169,7 @@ namespace FishPuzzle.Core
                 : TrayAnchor(result.TraySlotIndex);
             var toTank = result.Outcome == FishSelectionOutcome.RoutedToTank;
             var padding = toTank ? 0f : 8f;
-            var flightSeconds = toTank ? _tuning.FishRouteDuration : _tuning.TrayAutoMoveDuration;
+            var flightSeconds = toTank ? _tuning.FishRouteDuration : _tuning.TrayRouteDuration;
             yield return Squash(view != null ? view.transform : null, _tuning.FishTapSquashDuration);
             yield return FlyAndReflow(view, anchor, flightSeconds, toTank);
             if (view != null && anchor != null)
@@ -1193,6 +1264,7 @@ namespace FishPuzzle.Core
             }
 
             Sfx(SfxId.TankComplete);
+            Haptic(HapticKind.TankComplete);
             PresentComboStep();
 
             yield return null;
@@ -1257,6 +1329,7 @@ namespace FishPuzzle.Core
             var origin = rect != null ? rect.anchoredPosition : Vector2.zero;
             EmitBubbleBurst(parent, origin);
             Sfx(SfxId.BubblePop);
+            Haptic(HapticKind.BubblePop);
 
             var duration = _tuning != null ? _tuning.BubblePopDuration : 0.07f;
             _lastBubblePopSeconds = duration;
@@ -1280,53 +1353,6 @@ namespace FishPuzzle.Core
             }
 
             DestroyPoppingBubble();
-        }
-
-        private void EmitLaunchBubbles(Vector3 worldPosition)
-        {
-            if (_suppressPopVfx)
-            {
-                return;
-            }
-
-            var small = _art != null ? _art.SmallBubbleParticle : null;
-            if (small == null)
-            {
-                return;
-            }
-
-            EnsureFlightLayer();
-            var parent = _flightLayer;
-            if (parent == null && _scene != null && _scene.BubblePile != null)
-            {
-                parent = _scene.BubblePile.transform as RectTransform;
-            }
-
-            if (parent == null)
-            {
-                return;
-            }
-
-            try
-            {
-                if (_launchBursts == null)
-                {
-                    var cap = _tuning != null ? _tuning.BubbleBurstPoolCap : BubbleBurstPool.DefaultPoolCap;
-                    _launchBursts = BubbleBurstPool.Create(parent, cap);
-                }
-
-                if (_launchBursts == null)
-                {
-                    return;
-                }
-
-                var lifetime = _tuning != null ? _tuning.BubbleLaunchLifetime : 1.45f;
-                var count = _tuning != null ? _tuning.BubbleLaunchCount : 12;
-                _launchBursts.EmitTrail(worldPosition, small, lifetime, count);
-            }
-            catch (Exception)
-            {
-            }
         }
 
         private void EmitBubbleBurst(RectTransform parent, Vector2 origin)
@@ -1497,7 +1523,8 @@ namespace FishPuzzle.Core
             var toTray = !hop;
             var trailClock = 0f;
             var trailInterval = TrailInterval(toTray);
-            EmitTrail(start);
+            MarkTrailSamples();
+            EmitTrail(rect);
             while (elapsed < duration)
             {
                 var step = Step();
@@ -1507,12 +1534,15 @@ namespace FishPuzzle.Core
                     var sample = PresentationMotion.Sample(true, elapsed, seconds);
                     var along = hop ? PresentationMotion.Hop(sample.T) : PresentationMotion.EaseOutQuad(sample.T);
                     rect.position = PresentationMotion.QuadraticBezier(start, control, end, along);
-                    trailClock += step;
-                    if (!sample.Completed && trailClock >= trailInterval)
+                    if (!sample.Completed)
                     {
-                        trailClock = 0f;
-                        trailInterval = TrailInterval(toTray);
-                        EmitTrail(rect.position);
+                        trailClock += step;
+                        if (trailClock >= trailInterval)
+                        {
+                            trailClock = 0f;
+                            trailInterval = TrailInterval(toTray);
+                            EmitTrail(rect);
+                        }
                     }
                 }
 
@@ -1530,6 +1560,7 @@ namespace FishPuzzle.Core
                 rect.position = end;
             }
 
+            AssertTrailFollowedRoute(hop);
             ApplyReflow(1f);
         }
 
@@ -1562,7 +1593,8 @@ namespace FishPuzzle.Core
             var trailClock = 0f;
             var trailInterval = TrailInterval(false);
             Sfx(SfxId.FishFly, 1f, 0.7f);
-            EmitTrail(start);
+            MarkTrailSamples();
+            EmitTrail(rect);
             while (elapsed < seconds && rect != null)
             {
                 var step = Step();
@@ -1579,12 +1611,13 @@ namespace FishPuzzle.Core
                 {
                     trailClock = 0f;
                     trailInterval = TrailInterval(false);
-                    EmitTrail(rect.position);
+                    EmitTrail(rect);
                 }
 
                 yield return null;
             }
 
+            AssertTrailFollowedRoute(true);
             if (view != null)
             {
                 Place(view, anchor, padding);
@@ -1912,12 +1945,6 @@ namespace FishPuzzle.Core
             }
 
             var rect = view.transform as RectTransform;
-            if (result.Outcome == FishSelectionOutcome.RoutedToTank)
-            {
-                var departure = rect != null ? rect.position : view.transform.position;
-                EmitLaunchBubbles(departure);
-            }
-
             EnsureFlightLayer();
             if (rect != null && _flightLayer != null)
             {
@@ -2445,7 +2472,7 @@ namespace FishPuzzle.Core
             _flightLayer.offsetMin = Vector2.zero;
             _flightLayer.offsetMax = Vector2.zero;
             _flightLayer.pivot = new Vector2(0.5f, 0.5f);
-            _flightLayer.SetAsLastSibling();
+            OrderTrailUnderFish();
         }
 
         private RectTransform TankAnchor(int slotIndex, int ordinal)

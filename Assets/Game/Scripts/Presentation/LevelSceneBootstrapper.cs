@@ -60,6 +60,7 @@ namespace FishPuzzle.Presentation
         private LevelTransitionView _transition;
         private LevelBadgeView _levelBadge;
         private AudioFeedbackService _audio;
+        private HapticFeedbackService _haptics;
         private bool _transitioning;
         private int _levelLoadCount;
 
@@ -111,6 +112,9 @@ namespace FishPuzzle.Presentation
 
         /// <summary>Presentation SFX player created by this bootstrapper and handed to the flow.</summary>
         public AudioFeedbackService Audio => _audio;
+
+        /// <summary>Presentation vibration created by this bootstrapper and handed to the flow.</summary>
+        public HapticFeedbackService Haptics => _haptics;
 
         /// <summary>Gold shown in the top HUD (authoritative value from the wallet-owned progress).</summary>
         public string GoldHudText => _scene != null && _scene.GoldDisplay != null ? _scene.GoldDisplay.text : string.Empty;
@@ -475,6 +479,12 @@ namespace FishPuzzle.Presentation
             }
 
             _flow.ConfigureFeedback(_audio);
+            if (_haptics == null)
+            {
+                _haptics = HapticFeedbackService.Create();
+            }
+
+            _flow.ConfigureHaptics(_haptics);
             _flow.Begin(_level, _config, _scene, _fishCatalog, _animationTuning);
         }
 

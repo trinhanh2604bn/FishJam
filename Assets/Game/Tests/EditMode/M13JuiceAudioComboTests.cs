@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using FishPuzzle.Core;
 using FishPuzzle.Domain;
@@ -243,16 +244,21 @@ namespace FishPuzzle.Tests.EditMode
             try
             {
                 var trail = FishTrailEmitter.Create(parent.GetComponent<RectTransform>(), ProceduralVfxSprite.Dot);
+                Assert.That(trail.name, Is.EqualTo(FishTrailEmitter.RootName));
                 for (var i = 0; i < 50; i++)
                 {
-                    Assert.That(trail.NextInterval(false), Is.InRange(0.04f, 0.07f));
-                    Assert.That(trail.NextInterval(true), Is.GreaterThan(0.07f), "Bubble → Tray uses fewer particles.");
+                    Assert.That(trail.NextInterval(false), Is.InRange(FishTrailEmitter.MinInterval, FishTrailEmitter.MaxInterval));
+                    Assert.That(trail.NextInterval(true), Is.GreaterThan(FishTrailEmitter.MaxInterval), "Bubble → Tray uses fewer particles.");
                 }
 
-                Assert.That(FishTrailEmitter.MinLifetime, Is.InRange(0.3f, 0.5f));
-                Assert.That(FishTrailEmitter.MaxLifetime, Is.InRange(0.3f, 0.5f));
-                Assert.That(FishTrailEmitter.MinScale, Is.EqualTo(0.5f));
-                Assert.That(FishTrailEmitter.MaxScale, Is.EqualTo(1.0f));
+                Assert.That(FishTrailEmitter.MinLifetime, Is.EqualTo(0.30f));
+                Assert.That(FishTrailEmitter.MaxLifetime, Is.EqualTo(0.45f));
+                Assert.That(FishTrailEmitter.MinScale, Is.EqualTo(0.45f));
+                Assert.That(FishTrailEmitter.MaxScale, Is.EqualTo(0.9f));
+                Assert.That(FishTrailEmitter.MinAlpha, Is.EqualTo(0.35f));
+                Assert.That(FishTrailEmitter.MaxAlpha, Is.EqualTo(0.65f));
+                Assert.That(FishTrailEmitter.MinRise, Is.EqualTo(15f));
+                Assert.That(FishTrailEmitter.MaxRise, Is.EqualTo(35f));
             }
             finally
             {
@@ -274,8 +280,9 @@ namespace FishPuzzle.Tests.EditMode
                     trail.Emit(new Vector3(i, i * 0.5f, 0f));
                 }
 
-                Assert.That(trail.Burst(Vector3.zero, 7), Is.EqualTo(7));
-                Assert.That(trail.EmitCount, Is.EqualTo(200));
+                Assert.That(trail.Emit(new Vector3(9f, 9f, 0f)), Is.False, "Exhausted pool skips extra particles.");
+                Assert.That(trail.Burst(Vector3.zero, 7), Is.EqualTo(0), "Landing burst also skips when every slot is active.");
+                Assert.That(trail.EmitCount, Is.EqualTo(201));
                 Assert.That(trail.PoolSize, Is.LessThanOrEqualTo(trail.Cap));
                 Assert.That(trail.ActiveCount, Is.LessThanOrEqualTo(trail.Cap));
                 Assert.That(trail.Cap, Is.LessThanOrEqualTo(FishTrailEmitter.HardCap));
@@ -288,6 +295,7 @@ namespace FishPuzzle.Tests.EditMode
                 }
 
                 Assert.That(trail.ActiveCount, Is.EqualTo(0), "Particles fade out within ~0.5 s.");
+                Assert.That(trail.Burst(Vector3.zero, 7), Is.EqualTo(7), "Faded slots are reused.");
                 for (var i = 0; i < 30; i++)
                 {
                     trail.Emit(Vector3.zero);
@@ -307,6 +315,101 @@ namespace FishPuzzle.Tests.EditMode
             {
                 Object.DestroyImmediate(parent);
             }
+        }
+
+        [Test]
+        public void Trail_SamplesDistinctPositions_Detaches_AndConvertsAcrossParents()
+        {
+            var canvasGo = new GameObject("canvas", typeof(RectTransform), typeof(Canvas));
+            try
+            {
+                var canvas = canvasGo.GetComponent<Canvas>();
+                canvas.renderMode = RenderMode.WorldSpace;
+                var canvasRect = canvasGo.GetComponent<RectTransform>();
+                canvasRect.sizeDelta = new Vector2(1080f, 1920f);
+                canvasRect.pivot = new Vector2(0.5f, 0.5f);
+                canvasRect.position = new Vector3(1000f, 500f, 0f);
+
+                var flightGo = new GameObject("FishFlightLayer", typeof(RectTransform));
+                var flight = flightGo.GetComponent<RectTransform>();
+                flight.SetParent(canvasRect, false);
+                flight.anchorMin = new Vector2(0.5f, 0.5f);
+                flight.anchorMax = new Vector2(0.5f, 0.5f);
+                flight.pivot = new Vector2(0f, 1f);
+                flight.sizeDelta = new Vector2(800f, 800f);
+                flight.anchoredPosition = new Vector2(-120f, 240f);
+
+                var trail = FishTrailEmitter.Create(canvasRect, ProceduralVfxSprite.Dot);
+                Assert.That(trail.transform.parent, Is.SameAs(canvasRect));
+                Assert.That(trail.name, Is.EqualTo("FishTrailFxRoot"));
+
+                var fishGo = new GameObject("fish", typeof(RectTransform));
+                var fish = fishGo.GetComponent<RectTransform>();
+                fish.SetParent(flight, false);
+                fish.anchorMin = new Vector2(0.5f, 0.5f);
+                fish.anchorMax = new Vector2(0.5f, 0.5f);
+                fish.sizeDelta = new Vector2(124f, 124f);
+                fish.anchoredPosition = new Vector2(40f, -80f);
+
+                var probe = new GameObject("probe", typeof(RectTransform)).GetComponent<RectTransform>();
+                probe.SetParent(trail.FxRoot, false);
+                probe.anchorMin = new Vector2(0.5f, 0.5f);
+                probe.anchorMax = new Vector2(0.5f, 0.5f);
+                probe.pivot = new Vector2(0.5f, 0.5f);
+                probe.anchoredPosition = FishTrailEmitter.WorldToAnchored(trail.FxRoot, fish.position);
+                Assert.That(Vector3.Distance(probe.position, fish.position), Is.LessThan(1.5f), "FX anchored position must match the fish world position.");
+                Assert.That(fish.anchoredPosition, Is.Not.EqualTo(probe.anchoredPosition), "Fish local position must not be copied onto the FX root.");
+
+                Assert.That(trail.EmitCurrent(fish), Is.True);
+                Assert.That(trail.GetParticleParent(0), Is.SameAs(trail.transform));
+                Assert.That(trail.GetParticleParent(0), Is.Not.SameAs(fish));
+                var stayed = trail.GetParticleWorldPosition(0);
+                Assert.That(Vector3.Distance(stayed, fish.position), Is.LessThan(24f));
+
+                fish.anchoredPosition = new Vector2(-300f, 400f);
+                Assert.That(Vector3.Distance(trail.GetParticleWorldPosition(0), stayed), Is.LessThan(1.5f), "Spawned bubble stays behind after the fish moves.");
+
+                trail.ResetCounters();
+                var start = fish.position;
+                Assert.That(trail.EmitCurrent(fish), Is.True);
+                var end = start + new Vector3(180f, 520f, 0f);
+                var control = (start + end) * 0.5f + new Vector3(-140f, 80f, 0f);
+                var clock = 0f;
+                const float interval = 0.05f;
+                for (var step = 0; step < 10; step++)
+                {
+                    var t = (step + 1) / 10f;
+                    fish.position = PresentationMotion.QuadraticBezier(start, control, end, PresentationMotion.Hop(t));
+                    clock += interval;
+                    if (clock >= interval)
+                    {
+                        clock = 0f;
+                        Assert.That(trail.EmitCurrent(fish), Is.True);
+                    }
+                }
+
+                var samples = new List<Vector2>();
+                trail.CopySpawnPositions(samples);
+                Assert.That(samples.Count, Is.GreaterThanOrEqualTo(4));
+                Assert.That(FishTrailEmitter.SamplesSpanRoute(samples, 40f), Is.True, Describe(samples));
+                Assert.That(trail.AllParentedToFxRoot(), Is.True);
+                Assert.That(Vector2.Distance(samples[0], samples[samples.Count - 1]), Is.GreaterThan(40f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(canvasGo);
+            }
+        }
+
+        private static string Describe(List<Vector2> samples)
+        {
+            var text = "spawn";
+            for (var i = 0; i < samples.Count; i++)
+            {
+                text += " (" + samples[i].x.ToString("0") + "," + samples[i].y.ToString("0") + ")";
+            }
+
+            return text;
         }
 
         [Test]

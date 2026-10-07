@@ -1,4 +1,6 @@
 using System.Collections;
+using System.Collections.Generic;
+using System.IO;
 using FishPuzzle.Core;
 using FishPuzzle.Domain;
 using FishPuzzle.Presentation;
@@ -98,6 +100,117 @@ namespace FishPuzzle.Tests.PlayMode
             Assert.That(trayTrail, Is.LessThan(tankTrail), "Bubble → Tray uses fewer particles.");
             Assert.That(flow.Session.Tray.Count, Is.EqualTo(1));
             Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
+        }
+
+        [UnityTest]
+        public IEnumerator BubbleToTank_TrailSamplesDistinctPositionsAlongTheRoute()
+        {
+            var flow = Flow();
+            flow.Trail.ResetCounters();
+            var fish = flow.Session.FindFirstIdleFish(FishType.Orange);
+            PointerGesture.Click(ViewFor(fish.Id));
+
+            var savedFrames = 0;
+            var bestActive = 0;
+            var elapsed = 0f;
+            while ((flow.IsPresentationBusy || flow.State != GameState.PlayerInput) && elapsed < 8f)
+            {
+                if (flow.Trail.ActiveCount > bestActive)
+                {
+                    bestActive = flow.Trail.ActiveCount;
+                }
+
+                if (savedFrames < 3 && flow.Trail.SpawnCount >= 3 && flow.Trail.ActiveCount >= 2)
+                {
+                    var path = savedFrames == 1 ? "Logs/M131_FishTrail.png" : "Logs/M131_FishTrail_" + savedFrames + ".png";
+                    if (SaveTrailFrame(path))
+                    {
+                        savedFrames++;
+                    }
+                }
+
+                yield return null;
+
+                elapsed += Time.unscaledDeltaTime;
+            }
+
+            var samples = new List<Vector2>();
+            flow.Trail.CopySpawnPositions(samples);
+            Assert.That(samples.Count, Is.GreaterThanOrEqualTo(4), "Bubble → Tank emits several bubbles, not one launch burst.");
+            Assert.That(FishTrailEmitter.SamplesSpanRoute(samples, 20f), Is.True, DescribeSpawns(samples));
+            Assert.That(flow.Trail.AllParentedToFxRoot(), Is.True);
+            Assert.That(flow.Trail.name, Is.EqualTo(FishTrailEmitter.RootName));
+            Assert.That(flow.TankSplashCount, Is.EqualTo(1));
+            Assert.That(flow.Session.Tanks[0].FillCount, Is.EqualTo(1));
+            Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
+            Assert.That(bestActive, Is.GreaterThanOrEqualTo(2));
+        }
+
+        [UnityTest]
+        public IEnumerator TrayToTank_PromotionTrailSamplesDistinctPositions()
+        {
+            var flow = Flow();
+            for (var i = 0; i < 3; i++)
+            {
+                PointerGesture.Click(ViewFor(flow.Session.FindFirstIdleFish(FishType.RedClown).Id));
+                yield return WaitUntilReady(flow);
+            }
+
+            Assert.That(flow.Session.Tray.Count, Is.EqualTo(3));
+            PointerGesture.Click(ViewFor(flow.Session.FindFirstIdleFish(FishType.Orange).Id));
+            yield return WaitUntilReady(flow);
+            PointerGesture.Click(ViewFor(flow.Session.FindFirstIdleFish(FishType.Orange).Id));
+            yield return WaitUntilReady(flow);
+            Assert.That(flow.Session.Tanks[0].FillCount, Is.EqualTo(2));
+
+            flow.Trail.ResetCounters();
+            var splashBefore = flow.TankSplashCount;
+            PointerGesture.Click(ViewFor(flow.Session.FindFirstIdleFish(FishType.Orange).Id));
+            var sawOrangeLanding = false;
+            var mark = -1;
+            var elapsed = 0f;
+            while ((flow.IsPresentationBusy || flow.State != GameState.PlayerInput) && elapsed < 8f)
+            {
+                if (!sawOrangeLanding && flow.TankSplashCount > splashBefore && flow.Trail.SpawnCount >= 3)
+                {
+                    sawOrangeLanding = true;
+                    mark = flow.Trail.SpawnCount;
+                }
+
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            Assert.That(flow.State, Is.EqualTo(GameState.PlayerInput));
+            Assert.That(flow.Session.Tray.Count, Is.EqualTo(0), "Waiting fish auto-promote into the tank.");
+            var samples = new List<Vector2>();
+            flow.Trail.CopySpawnPositions(samples);
+            Assert.That(samples.Count, Is.GreaterThanOrEqualTo(4), DescribeSpawns(samples));
+            Assert.That(mark, Is.GreaterThanOrEqualTo(3), "Bubble → Tank portion of the completing flight sampled the path.");
+            var orange = new List<Vector2>();
+            for (var i = 0; i < mark && i < samples.Count; i++)
+            {
+                orange.Add(samples[i]);
+            }
+
+            Assert.That(FishTrailEmitter.SamplesSpanRoute(orange, 20f), Is.True, "Bubble → Tank " + DescribeSpawns(orange));
+            var promotion = new List<Vector2>();
+            for (var i = mark; i < samples.Count; i++)
+            {
+                promotion.Add(samples[i]);
+            }
+
+            Assert.That(promotion.Count, Is.GreaterThanOrEqualTo(3), "Tray → Tank " + DescribeSpawns(promotion));
+            var farthest = 0f;
+            for (var i = 0; i < promotion.Count; i++)
+            {
+                for (var j = i + 1; j < promotion.Count; j++)
+                {
+                    farthest = Mathf.Max(farthest, Vector2.Distance(promotion[i], promotion[j]));
+                }
+            }
+
+            Assert.That(farthest, Is.GreaterThan(20f), "Tray → Tank bubbles are spread along the route. " + DescribeSpawns(promotion));
         }
 
         [UnityTest]
@@ -296,6 +409,94 @@ namespace FishPuzzle.Tests.PlayMode
             var overlay = layer.parent != null ? layer.parent.Find("OverlayRoot") : null;
             Assert.That(overlay, Is.Not.Null);
             Assert.That(layer.GetSiblingIndex(), Is.LessThan(overlay.GetSiblingIndex()), "Modals stay above combo text.");
+        }
+
+        private static bool SaveTrailFrame(string relativePath)
+        {
+            var trail = Object.FindAnyObjectByType<FishTrailEmitter>();
+            var canvas = trail != null ? trail.GetComponentInParent<Canvas>() : null;
+            if (canvas == null)
+            {
+                return false;
+            }
+
+            var previousMode = canvas.renderMode;
+            var previousCamera = canvas.worldCamera;
+            var previousPlane = canvas.planeDistance;
+            GameObject cameraObject = null;
+            RenderTexture target = null;
+            Texture2D texture = null;
+            var previousActive = RenderTexture.active;
+            try
+            {
+                cameraObject = new GameObject("TrailCaptureCamera");
+                var camera = cameraObject.AddComponent<Camera>();
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = new Color(0.53f, 0.78f, 0.93f, 1f);
+                camera.orthographic = true;
+                camera.orthographicSize = 9.6f;
+                camera.nearClipPlane = 0.3f;
+                camera.farClipPlane = 1000f;
+                camera.transform.position = new Vector3(0f, 0f, -100f);
+                target = new RenderTexture(540, 960, 24);
+                camera.targetTexture = target;
+                canvas.renderMode = RenderMode.ScreenSpaceCamera;
+                canvas.worldCamera = camera;
+                canvas.planeDistance = 100f;
+                Canvas.ForceUpdateCanvases();
+                camera.Render();
+                RenderTexture.active = target;
+                texture = new Texture2D(target.width, target.height, TextureFormat.RGB24, false);
+                texture.ReadPixels(new Rect(0, 0, target.width, target.height), 0, 0);
+                texture.Apply();
+                var path = Path.Combine(Directory.GetCurrentDirectory(), relativePath);
+                var directory = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                File.WriteAllBytes(path, texture.EncodeToPNG());
+                return true;
+            }
+            catch (System.Exception)
+            {
+                return false;
+            }
+            finally
+            {
+                RenderTexture.active = previousActive;
+                canvas.renderMode = previousMode;
+                canvas.worldCamera = previousCamera;
+                canvas.planeDistance = previousPlane;
+                if (cameraObject != null)
+                {
+                    Object.Destroy(cameraObject);
+                }
+
+                if (target != null)
+                {
+                    target.Release();
+                    Object.Destroy(target);
+                }
+
+                if (texture != null)
+                {
+                    Object.Destroy(texture);
+                }
+            }
+        }
+
+        private static string DescribeSpawns(List<Vector2> samples)
+        {
+            var text = "spawns " + samples.Count;
+            var limit = samples.Count < 8 ? samples.Count : 8;
+            for (var i = 0; i < limit; i++)
+            {
+                text += " (" + samples[i].x.ToString("0") + "," + samples[i].y.ToString("0") + ")";
+            }
+
+            return text;
         }
 
         private static void AssertNoPressGraphicRaycasts(FishView view)

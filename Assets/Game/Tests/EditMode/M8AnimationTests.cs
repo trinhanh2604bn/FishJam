@@ -21,7 +21,8 @@ namespace FishPuzzle.Tests.EditMode
 
             Assert.That(tuning, Is.Not.Null);
             Assert.That(tuning.FishTapSquashDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
-            Assert.That(tuning.FishRouteDuration, Is.InRange(0.38f, 0.46f));
+            Assert.That(tuning.FishRouteBaseDuration, Is.InRange(0.38f, 0.46f));
+            Assert.That(tuning.FishRouteDuration, Is.EqualTo(tuning.FishRouteBaseDuration + 0.2f).Within(0.0001f));
             Assert.That(tuning.FishLandingBounceDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
             Assert.That(tuning.TankResolveDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));
             Assert.That(tuning.TankTargetSwapDuration, Is.GreaterThan(0f).And.LessThanOrEqualTo(0.25f));

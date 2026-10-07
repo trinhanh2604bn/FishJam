@@ -16,7 +16,8 @@ namespace FishPuzzle.Tests.EditMode
         {
             var tuning = AssetDatabase.LoadAssetAtPath<AnimationTuning>(TuningPath);
 
-            Assert.That(tuning.FishRouteDuration, Is.InRange(0.38f, 0.46f));
+            Assert.That(tuning.FishRouteBaseDuration, Is.InRange(0.38f, 0.46f));
+            Assert.That(tuning.FishRouteDuration, Is.EqualTo(tuning.FishRouteBaseDuration + 0.2f).Within(0.0001f));
             Assert.That(tuning.FishLandingBounceDuration, Is.InRange(0.08f, 0.10f));
             Assert.That(tuning.TankResolveDuration, Is.InRange(0.16f, 0.20f));
             Assert.That(tuning.TankTargetSwapDuration, Is.InRange(0.10f, 0.14f));

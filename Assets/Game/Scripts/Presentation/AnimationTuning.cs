@@ -12,6 +12,8 @@ namespace FishPuzzle.Presentation
         [Header("Fish")]
         [SerializeField] private float _fishTapSquashDuration = 0.04f;
         [SerializeField] private float _fishRouteDuration = 0.42f;
+        [Tooltip("Added to every fish route (Bubble → Tank, Bubble → Tray, Tray → Tank).")]
+        [SerializeField] private float _fishRouteExtraDuration = 0.2f;
         [SerializeField] private float _fishLandingBounceDuration = 0.09f;
         [SerializeField] private float _fishPressLift = 8f;
         [SerializeField] private float _fishPressScale = 1.05f;
@@ -59,7 +61,16 @@ namespace FishPuzzle.Presentation
 
         public float FishTapSquashDuration => Mathf.Max(0f, _fishTapSquashDuration);
 
-        public float FishRouteDuration => Mathf.Max(0f, _fishRouteDuration);
+        /// <summary>Bubble → Tank and Tray → Tank flight time before the route extra.</summary>
+        public float FishRouteBaseDuration => Mathf.Max(0f, _fishRouteDuration);
+
+        public float FishRouteExtraDuration => Mathf.Max(0f, _fishRouteExtraDuration);
+
+        /// <summary>Bubble → Tank and Tray → Tank flight time.</summary>
+        public float FishRouteDuration => FishRouteBaseDuration + FishRouteExtraDuration;
+
+        /// <summary>Bubble → Waiting Tray flight time.</summary>
+        public float TrayRouteDuration => TrayAutoMoveDuration + FishRouteExtraDuration;
 
         public float FishLandingBounceDuration => Mathf.Max(0f, _fishLandingBounceDuration);
 
@@ -145,6 +156,7 @@ namespace FishPuzzle.Presentation
         {
             ReportIfNegative(nameof(FishTapSquashDuration), _fishTapSquashDuration);
             ReportIfNegative(nameof(FishRouteDuration), _fishRouteDuration);
+            ReportIfNegative(nameof(FishRouteExtraDuration), _fishRouteExtraDuration);
             ReportIfNegative(nameof(FishLandingBounceDuration), _fishLandingBounceDuration);
             ReportIfNegative(nameof(FishPressLift), _fishPressLift);
             ReportIfNegative(nameof(FishPressScale), _fishPressScale);

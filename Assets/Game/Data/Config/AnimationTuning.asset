@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: FishPuzzle.Runtime::FishPuzzle.Presentation.AnimationTuning
   _fishTapSquashDuration: 0.04
   _fishRouteDuration: 0.42
+  _fishRouteExtraDuration: 0.2
   _fishLandingBounceDuration: 0.09
   _fishPressLift: 8
   _fishPressScale: 1.05

@@ -13,19 +13,29 @@ namespace FishPuzzle.Presentation
     {
         public const int DefaultCap = 40;
         public const int HardCap = 64;
-        public const float MinInterval = 0.04f;
-        public const float MaxInterval = 0.07f;
+        public const float MinInterval = 0.045f;
+        public const float MaxInterval = 0.065f;
         public const float MinLifetime = 0.30f;
-        public const float MaxLifetime = 0.50f;
-        public const float MinScale = 0.5f;
-        public const float MaxScale = 1.0f;
+        public const float MaxLifetime = 0.45f;
+        public const float MinScale = 0.45f;
+        public const float MaxScale = 0.9f;
+        public const float MinAlpha = 0.35f;
+        public const float MaxAlpha = 0.65f;
+        public const float MinRise = 15f;
+        public const float MaxRise = 35f;
 
-        /// <summary>Bubble → Waiting Tray uses fewer particles: its spawn interval is multiplied by this.</summary>
-        public const float TrayIntervalFactor = 2.2f;
+        /// <summary>Full width of the small sideways jitter, in FX-root pixels. Half of this is the maximum offset.</summary>
+        public const float HorizontalJitter = 16f;
 
-        private const float BaseSize = 26f;
+        /// <summary>Bubble → Waiting Tray uses a longer interval so the trail is lighter but still follows the route.</summary>
+        public const float TrayIntervalFactor = 1.75f;
+
+        public const string RootName = "FishTrailFxRoot";
+
+        private const float BaseSize = 28f;
 
         private readonly List<Particle> _particles = new List<Particle>();
+        private readonly List<Vector2> _spawnPositions = new List<Vector2>();
         private RectTransform _layer;
         private Sprite _sprite;
         private int _cap = DefaultCap;
@@ -59,7 +69,11 @@ namespace FishPuzzle.Presentation
 
         public int BurstCount => _burstCount;
 
+        public int SpawnCount => _spawnPositions.Count;
+
         public bool HasSprite => _sprite != null;
+
+        public RectTransform FxRoot => _layer;
 
         public static FishTrailEmitter Create(RectTransform parent, Sprite sprite, int cap = DefaultCap)
         {
@@ -68,7 +82,7 @@ namespace FishPuzzle.Presentation
                 return null;
             }
 
-            var host = new GameObject("FishTrailLayer", typeof(RectTransform), typeof(CanvasGroup), typeof(FishTrailEmitter));
+            var host = new GameObject(RootName, typeof(RectTransform), typeof(CanvasGroup), typeof(FishTrailEmitter));
             var rect = host.GetComponent<RectTransform>();
             rect.SetParent(parent, false);
             rect.anchorMin = Vector2.zero;
@@ -91,14 +105,28 @@ namespace FishPuzzle.Presentation
             _sprite = sprite;
         }
 
-        /// <summary>Random spawn interval inside [0.04, 0.07] s, stretched for the tray route.</summary>
+        /// <summary>Random spawn interval inside [0.045, 0.065] s, stretched for the tray route.</summary>
         public float NextInterval(bool toTray)
         {
             var interval = Mathf.Lerp(MinInterval, MaxInterval, Random01());
             return toTray ? interval * TrayIntervalFactor : interval;
         }
 
-        /// <summary>One trail bubble near <paramref name="worldPosition"/>. Returns false when nothing spawned.</summary>
+        /// <summary>
+        /// One trail bubble at the fish's position right now. The particle is parented to this FX root, not the fish.
+        /// </summary>
+        public bool EmitCurrent(Transform fish)
+        {
+            if (fish == null)
+            {
+                _emitCount++;
+                return false;
+            }
+
+            return Emit(fish.position);
+        }
+
+        /// <summary>One trail bubble at <paramref name="worldPosition"/>. Returns false when the pool is exhausted or nothing spawned.</summary>
         public bool Emit(Vector3 worldPosition)
         {
             _emitCount++;
@@ -113,13 +141,19 @@ namespace FishPuzzle.Presentation
                 return false;
             }
 
-            var local = _layer.InverseTransformPoint(worldPosition);
-            var offset = new Vector2((Random01() - 0.5f) * 36f, (Random01() - 0.5f) * 28f);
+            var jitter = new Vector2((Random01() - 0.5f) * HorizontalJitter, (Random01() - 0.5f) * 8f);
             var scale = Mathf.Lerp(MinScale, MaxScale, Random01());
             var life = Mathf.Lerp(MinLifetime, MaxLifetime, Random01());
-            var drift = new Vector2((Random01() - 0.5f) * 14f, 26f + (Random01() * 22f));
-            var alpha = 0.45f + (Random01() * 0.25f);
-            particle.Launch(_sprite, new Vector2(local.x, local.y) + offset, drift, BaseSize * scale, life, alpha);
+            var drift = new Vector2((Random01() - 0.5f) * 8f, Mathf.Lerp(MinRise, MaxRise, Random01()));
+            var alpha = Mathf.Lerp(MinAlpha, MaxAlpha, Random01());
+            var anchored = WorldToAnchored(_layer, worldPosition) + jitter;
+            particle.Launch(_layer, _sprite, anchored, drift, BaseSize * scale, life, alpha);
+            if (!PlacedNear(particle.WorldPosition, worldPosition, jitter))
+            {
+                particle.MoveToWorld(_layer, worldPosition, jitter);
+            }
+
+            _spawnPositions.Add(new Vector2(particle.WorldPosition.x, particle.WorldPosition.y));
             return true;
         }
 
@@ -132,8 +166,7 @@ namespace FishPuzzle.Presentation
             }
 
             _burstCount++;
-            var local = _layer.InverseTransformPoint(worldPosition);
-            var center = new Vector2(local.x, local.y);
+            var center = WorldToAnchored(_layer, worldPosition);
             var emitted = 0;
             for (var i = 0; i < count; i++)
             {
@@ -149,7 +182,7 @@ namespace FishPuzzle.Presentation
                 var drift = new Vector2(Mathf.Cos(angle) * 22f, 34f + (Random01() * 30f));
                 var size = BaseSize * Mathf.Lerp(MinScale, MaxScale, Random01());
                 var life = Mathf.Lerp(0.35f, 0.55f, Random01());
-                particle.Launch(_sprite, start, drift, size, life, 0.55f + (Random01() * 0.2f));
+                particle.Launch(_layer, _sprite, start, drift, size, life, 0.55f + (Random01() * 0.2f));
                 emitted++;
             }
 
@@ -168,6 +201,182 @@ namespace FishPuzzle.Presentation
         {
             _emitCount = 0;
             _burstCount = 0;
+            _spawnPositions.Clear();
+        }
+
+        public void CopySpawnPositions(List<Vector2> destination)
+        {
+            if (destination == null)
+            {
+                return;
+            }
+
+            destination.Clear();
+            for (var i = 0; i < _spawnPositions.Count; i++)
+            {
+                destination.Add(_spawnPositions[i]);
+            }
+        }
+
+        public Vector2 SpawnPosition(int index)
+        {
+            return _spawnPositions[index];
+        }
+
+        /// <summary>
+        /// True when <paramref name="positions"/> contains at least three separated samples,
+        /// the first and last are at least <paramref name="minSpan"/> apart, and later samples
+        /// progress along that span. This is the route proof — not merely "emit was called".
+        /// </summary>
+        public static bool SamplesSpanRoute(IReadOnlyList<Vector2> positions, float minSpan)
+        {
+            if (positions == null || positions.Count < 3 || minSpan <= 0f)
+            {
+                return false;
+            }
+
+            var first = positions[0];
+            var last = positions[positions.Count - 1];
+            var span = Vector2.Distance(first, last);
+            if (span < minSpan)
+            {
+                return false;
+            }
+
+            var distinct = 1;
+            var distinctGap = minSpan * 0.12f;
+            for (var i = 1; i < positions.Count; i++)
+            {
+                var separated = true;
+                for (var j = 0; j < i; j++)
+                {
+                    if (Vector2.Distance(positions[i], positions[j]) < distinctGap)
+                    {
+                        separated = false;
+                        break;
+                    }
+                }
+
+                if (separated)
+                {
+                    distinct++;
+                }
+            }
+
+            if (distinct < 3)
+            {
+                return false;
+            }
+
+            var axis = (last - first) / span;
+            var previous = 0f;
+            var forward = 0;
+            var step = minSpan * 0.08f;
+            for (var i = 1; i < positions.Count; i++)
+            {
+                var projection = Vector2.Dot(positions[i] - first, axis);
+                if (projection > previous + step)
+                {
+                    forward++;
+                }
+
+                if (projection > previous)
+                {
+                    previous = projection;
+                }
+            }
+
+            return forward >= 2;
+        }
+
+        public bool SamplesSinceFollowRoute(int startIndex, float minSpan = 20f)
+        {
+            if (startIndex < 0)
+            {
+                startIndex = 0;
+            }
+
+            if (startIndex > _spawnPositions.Count)
+            {
+                startIndex = _spawnPositions.Count;
+            }
+
+            var slice = new List<Vector2>(_spawnPositions.Count - startIndex);
+            for (var i = startIndex; i < _spawnPositions.Count; i++)
+            {
+                slice.Add(_spawnPositions[i]);
+            }
+
+            return SamplesSpanRoute(slice, minSpan);
+        }
+
+        public Transform GetParticleParent(int index)
+        {
+            return _particles[index].Parent;
+        }
+
+        public Vector3 GetParticleWorldPosition(int index)
+        {
+            return _particles[index].WorldPosition;
+        }
+
+        public bool IsParticleActive(int index)
+        {
+            return index >= 0 && index < _particles.Count && _particles[index].Active;
+        }
+
+        public bool AllParentedToFxRoot()
+        {
+            for (var i = 0; i < _particles.Count; i++)
+            {
+                if (_particles[i].Parent != _layer)
+                {
+                    return false;
+                }
+            }
+
+            return _layer != null;
+        }
+
+        /// <summary>
+        /// Converts a world point into the center-anchored coordinate used by trail particles.
+        /// Screen-point conversion is preferred when it agrees with the FX root's transform;
+        /// otherwise the transform inverse is used so a fish local position is never copied across parents.
+        /// </summary>
+        public static Vector2 WorldToAnchored(RectTransform layer, Vector3 worldPosition)
+        {
+            if (layer == null)
+            {
+                return Vector2.zero;
+            }
+
+            var inverse = layer.InverseTransformPoint(worldPosition);
+            var fromInverse = new Vector2(inverse.x, inverse.y) - layer.rect.center;
+            var canvas = layer.GetComponentInParent<Canvas>();
+            if (canvas == null)
+            {
+                return fromInverse;
+            }
+
+            Camera camera = null;
+            if (canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+            {
+                camera = canvas.worldCamera;
+            }
+
+            var screen = RectTransformUtility.WorldToScreenPoint(camera, worldPosition);
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(layer, screen, camera, out var pivotLocal))
+            {
+                return fromInverse;
+            }
+
+            var fromUtility = pivotLocal - layer.rect.center;
+            if ((fromUtility - fromInverse).sqrMagnitude <= 4f)
+            {
+                return fromUtility;
+            }
+
+            return fromInverse;
         }
 
         public void Tick(float delta)
@@ -208,28 +417,26 @@ namespace FishPuzzle.Presentation
                 }
             }
 
-            if (_particles.Count < _cap)
+            if (_particles.Count >= _cap)
             {
-                var created = Particle.Create(_layer);
-                if (created != null)
-                {
-                    _particles.Add(created);
-                }
-
-                return created;
+                return null;
             }
 
-            // At the cap: recycle the oldest particle instead of allocating.
-            Particle oldest = null;
-            for (var i = 0; i < _particles.Count; i++)
+            var created = Particle.Create(_layer);
+            if (created != null)
             {
-                if (oldest == null || _particles[i].Progress > oldest.Progress)
-                {
-                    oldest = _particles[i];
-                }
+                _particles.Add(created);
             }
 
-            return oldest;
+            return created;
+        }
+
+        private static bool PlacedNear(Vector3 particleWorld, Vector3 fishWorld, Vector2 jitter)
+        {
+            var miss = particleWorld - fishWorld;
+            miss.z = 0f;
+            var allowance = jitter.magnitude + 2f;
+            return miss.sqrMagnitude <= allowance * allowance;
         }
 
         private float Random01()
@@ -257,6 +464,10 @@ namespace FishPuzzle.Presentation
 
             public bool RaycastTarget => _image != null && _image.raycastTarget;
 
+            public Transform Parent => _rect != null ? _rect.parent : null;
+
+            public Vector3 WorldPosition => _rect != null ? _rect.position : Vector3.zero;
+
             public static Particle Create(RectTransform parent)
             {
                 if (parent == null)
@@ -276,14 +487,18 @@ namespace FishPuzzle.Presentation
                 return new Particle { _rect = rect, _image = image };
             }
 
-            public void Launch(Sprite sprite, Vector2 anchored, Vector2 drift, float size, float life, float alpha)
+            public void Launch(RectTransform parent, Sprite sprite, Vector2 anchored, Vector2 drift, float size, float life, float alpha)
             {
-                if (_rect == null || _image == null)
+                if (_rect == null || _image == null || parent == null)
                 {
                     return;
                 }
 
-                _origin = anchored;
+                if (_rect.parent != parent)
+                {
+                    _rect.SetParent(parent, false);
+                }
+
                 _drift = drift;
                 _life = Mathf.Max(0.05f, life);
                 _elapsed = 0f;
@@ -293,8 +508,26 @@ namespace FishPuzzle.Presentation
                 _image.color = new Color(1f, 1f, 1f, alpha);
                 _rect.sizeDelta = new Vector2(size, size);
                 _rect.anchoredPosition = anchored;
+                _origin = anchored;
                 _rect.localScale = Vector3.one;
                 _rect.gameObject.SetActive(true);
+            }
+
+            public void MoveToWorld(RectTransform parent, Vector3 worldPosition, Vector2 anchoredJitter)
+            {
+                if (_rect == null || parent == null)
+                {
+                    return;
+                }
+
+                if (_rect.parent != parent)
+                {
+                    _rect.SetParent(parent, false);
+                }
+
+                _rect.position = worldPosition;
+                _rect.anchoredPosition += anchoredJitter;
+                _origin = _rect.anchoredPosition;
             }
 
             public void Advance(float step)
@@ -308,7 +541,7 @@ namespace FishPuzzle.Presentation
                 var t = Mathf.Clamp01(_elapsed / _life);
                 var eased = PresentationMotion.EaseOutQuad(t);
                 _rect.anchoredPosition = _origin + (_drift * eased);
-                var scale = Mathf.Lerp(0.85f, 1.1f, eased);
+                var scale = Mathf.Lerp(1f, 1.12f, eased);
                 _rect.localScale = new Vector3(scale, scale, 1f);
                 var color = _image.color;
                 color.a = _alpha * (1f - (t * t));
